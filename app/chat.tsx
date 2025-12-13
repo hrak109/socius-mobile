@@ -1,14 +1,15 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, FlatList, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GiftedChat, IMessage, User } from 'react-native-gifted-chat';
+import { GiftedChat, IMessage, User, Bubble } from 'react-native-gifted-chat';
+import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../context/AuthContext';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import api from '../services/api';
 
 const BOT_USER: User = {
     _id: 2,
-    name: 'Hai AI',
+    name: 'hai AI',
     avatar: 'https://placeimg.com/140/140/tech',
 };
 
@@ -21,9 +22,10 @@ const MODELS = [
 export default function ChatScreen() {
     const { signOut } = useSession();
     const router = useRouter();
+    const { model } = useLocalSearchParams<{ model: string }>();
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [isTyping, setIsTyping] = useState(false);
-    const [selectedModel, setSelectedModel] = useState('hbb-llama3.2:3b');
+    const [selectedModel, setSelectedModel] = useState(model || 'hbb-llama3.2:3b');
     const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
@@ -148,17 +150,36 @@ export default function ChatScreen() {
         return MODELS.find(m => m.id === id)?.name || id;
     };
 
+    const renderChatFooter = () => (
+        <View style={styles.footerContainer}>
+            <TouchableOpacity
+                style={styles.modelSelector}
+                onPress={() => setModalVisible(true)}
+            >
+                <Text style={styles.modelText}>{getModelName(selectedModel)} ▼</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
+    const renderBubble = (props: any) => (
+        <Bubble
+            {...props}
+            wrapperStyle={{
+                left: { marginLeft: 0, paddingLeft: 0 },
+                right: { marginRight: 0, paddingRight: 0 }
+            }}
+            containerStyle={{
+                left: { marginLeft: 0, marginRight: 0 },
+                right: { marginLeft: 0, marginRight: 0 }
+            }}
+        />
+    );
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.modelSelector}
-                    onPress={() => setModalVisible(true)}
-                >
-                    <Text style={styles.modelText}>{getModelName(selectedModel)} ▼</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleSignOut} style={styles.logoutButton}>
-                    <Text style={styles.logoutText}>Logout</Text>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color="#333" />
                 </TouchableOpacity>
             </View>
 
@@ -205,6 +226,8 @@ export default function ChatScreen() {
                     _id: 1,
                 }}
                 isTyping={isTyping}
+                renderChatFooter={renderChatFooter}
+                renderBubble={renderBubble}
             />
         </SafeAreaView>
     );
@@ -216,12 +239,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         padding: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
+        flexDirection: 'row', // Ensure items are row aligned
+        alignItems: 'center',
+    },
+    footerContainer: {
+        padding: 5,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     modelSelector: {
         backgroundColor: '#f0f0f0',
@@ -233,11 +260,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#333',
     },
-    logoutButton: {
+    backButton: {
         padding: 8,
-    },
-    logoutText: {
-        color: 'red',
     },
     modalOverlay: {
         flex: 1,

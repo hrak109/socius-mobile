@@ -84,7 +84,7 @@ export default function LoginScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Hai</Text>
+                <Text style={styles.title}>hai</Text>
                 <Text style={styles.subtitle}>Secure AI by Hee</Text>
             </View>
 
