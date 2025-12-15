@@ -15,7 +15,7 @@ export default function LoginScreen() {
         GoogleSignin.configure({
             // IMPORTANT: Use your Web Client ID from Google Cloud Console
             // This is NOT the same as your Android Client ID
-            webClientId: '801464542210-1fkf9io7j3dklo1shs6vhim6q1v893d3.apps.googleusercontent.com',
+            webClientId: '801464542210-de05fpuk53ngm0s3lht5ucn0u36h0ou8.apps.googleusercontent.com',
             offlineAccess: false,
             // Request ID token explicitly
             scopes: ['openid', 'profile', 'email'],
@@ -84,7 +84,7 @@ export default function LoginScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>hai</Text>
+                <Text style={styles.title}>Socius</Text>
                 <Text style={styles.subtitle}>Secure AI by Hee</Text>
             </View>
 

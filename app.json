@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "hai",
-    "slug": "hai-mobile",
+    "name": "Socius",
+    "slug": "socius-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "hai",
+    "scheme": "socius-mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.hai.mobile.android"
+      "bundleIdentifier": "com.socius.mobile.ios"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +21,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.hai.mobile.android"
+      "package": "com.socius.mobile.android",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -49,7 +50,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "6fcf28fe-63a9-419f-b1c9-3052c28d44aa"
+        "projectId": "849db0b4-1558-4ecd-ad96-595c72be2719"
       }
     }
   }

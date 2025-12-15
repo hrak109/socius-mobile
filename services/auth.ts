@@ -17,7 +17,7 @@ export const removeToken = async () => {
 
 export const loginWithGoogle = async (idToken: string) => {
     try {
-        const response = await api.post('/api/private/auth/google', { id_token: idToken });
+        const response = await api.post('/api/socius/auth/google', { id_token: idToken });
         const { access_token } = response.data;
         await saveToken(access_token);
         return access_token;

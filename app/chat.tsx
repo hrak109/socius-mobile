@@ -9,7 +9,7 @@ import api from '../services/api';
 
 const BOT_USER: User = {
     _id: 2,
-    name: 'hai AI',
+    name: 'Socius',
     avatar: 'https://placeimg.com/140/140/tech',
 };
 
@@ -33,7 +33,7 @@ export default function ChatScreen() {
         const fetchHistory = async () => {
             try {
                 // Fetch context-aware history
-                const res = await api.get('/api/private/history', {
+                const res = await api.get('/api/socius/history', {
                     params: { model: selectedModel }
                 });
                 const history = res.data;
@@ -76,7 +76,7 @@ export default function ChatScreen() {
         setIsTyping(true);
         try {
             // Send question with selected model
-            const res = await api.post('/api/private/ask', {
+            const res = await api.post('/api/socius/ask', {
                 q_text: text,
                 model: selectedModel
             });
@@ -100,7 +100,7 @@ export default function ChatScreen() {
         const interval = setInterval(async () => {
             try {
                 // Pass model so we can tag the answer in history
-                const res = await api.get(`/api/private/get_answer/${qid}`, {
+                const res = await api.get(`/api/socius/get_answer/${qid}`, {
                     params: { model: modelUsed }
                 });
                 const data = res.data;

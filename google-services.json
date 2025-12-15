@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "801464542210",
+    "project_id": "hai-oauth",
+    "storage_bucket": "hai-oauth.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:801464542210:android:f53ed08eee42051fd9331b",
+        "android_client_info": {
+          "package_name": "com.hai.mobile.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "801464542210-1fkf9io7j3dklo1shs6vhim6q1v893d3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6vOKIsRou6sXnkQZiQyjXiTEG_9KhCKo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "801464542210-1fkf9io7j3dklo1shs6vhim6q1v893d3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:801464542210:android:ef9db2c17aeb3b16d9331b",
+        "android_client_info": {
+          "package_name": "com.socius.mobile.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "801464542210-1fkf9io7j3dklo1shs6vhim6q1v893d3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6vOKIsRou6sXnkQZiQyjXiTEG_9KhCKo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "801464542210-1fkf9io7j3dklo1shs6vhim6q1v893d3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
