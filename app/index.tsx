@@ -15,7 +15,7 @@ export default function LoginScreen() {
         GoogleSignin.configure({
             // IMPORTANT: Use your Web Client ID from Google Cloud Console
             // This is NOT the same as your Android Client ID
-            webClientId: '801464542210-de05fpuk53ngm0s3lht5ucn0u36h0ou8.apps.googleusercontent.com',
+            webClientId: '801464542210-b08v4fc2tsk7ma3bfu30jc1frueps1on.apps.googleusercontent.com',
             offlineAccess: false,
             // Request ID token explicitly
             scopes: ['openid', 'profile', 'email'],
