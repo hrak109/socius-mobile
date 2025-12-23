@@ -2,12 +2,16 @@ import { Slot, Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { useEffect } from 'react';
 import { AuthProvider, useSession } from '../context/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
+import ChatHead from '../components/ChatHead';
+import { StatusBar } from 'expo-status-bar';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
 
 const InitialLayout = () => {
   const { session, isLoading } = useSession();
   const segments = useSegments();
   const pathname = usePathname();
   const router = useRouter();
+  const { isDark } = useTheme();
 
   useEffect(() => {
     if (isLoading) return;
@@ -33,13 +37,21 @@ const InitialLayout = () => {
     );
   }
 
-  return <Slot />;
+  return (
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <Slot />
+      {session && <ChatHead />}
+    </>
+  );
 };
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <InitialLayout />
+      <ThemeProvider>
+        <InitialLayout />
+      </ThemeProvider>
     </AuthProvider>
   );
 }

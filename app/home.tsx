@@ -1,38 +1,106 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions, Image, Modal, TouchableWithoutFeedback, Animated, Easing, PanResponder, StatusBar } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useRef, useEffect } from 'react';
+import { StyleSheet, View, Image, Text, TouchableOpacity, Animated, PanResponder, Dimensions, ScrollView, Modal, TouchableWithoutFeedback, StatusBar, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useSession } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
-type AppIcon = {
+interface AppIcon {
     id: string;
     label: string;
     iconName: keyof typeof Ionicons.glyphMap;
     color: string;
     route?: string;
-    disabled?: boolean;
     initialX: number;
     initialY: number;
-};
+    disabled?: boolean;
+}
+
+import { AVATAR_MAP } from '../constants/avatars';
+import { useTheme } from '../context/ThemeContext';
+
+// ...
 
 const APPS: AppIcon[] = [
-    { id: 'chat', label: 'Messages', iconName: 'chatbubbles', color: '#1a73e8', route: '/chat', initialX: width * 0.15, initialY: height * 0.25 },
+    { id: 'chat', label: 'Messages', iconName: 'chatbubbles', color: '#1a73e8', route: '/messages', initialX: width * 0.15, initialY: height * 0.25 },
     { id: 'diary', label: 'Diary', iconName: 'book', color: '#34a853', route: '/diary', initialX: width * 0.65, initialY: height * 0.35 },
     { id: 'bible', label: 'Bible', iconName: 'library', color: '#fbbc04', route: '/bible', initialX: width * 0.4, initialY: height * 0.55 },
+    { id: 'friends', label: 'Friends', iconName: 'people', color: '#e91e63', route: '/friends', initialX: width * 0.15, initialY: height * 0.65 },
+    { id: 'settings', label: 'Settings', iconName: 'settings', color: '#607d8b', route: '/settings', initialX: width * 0.75, initialY: height * 0.75 },
 ];
 
 export default function HomeScreen() {
     const router = useRouter();
     const { signOut } = useSession();
+    const { colors, isDark } = useTheme();
     const [userInfo, setUserInfo] = useState<any>(null);
-    const [profileModalVisible, setProfileModalVisible] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
     const date = new Date();
     const dateString = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    const [timeString, setTimeString] = useState(date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+    const [weather, setWeather] = useState({ temp: 72, condition: 'Sunny' }); // Mock weather
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const now = new Date();
+            setTimeString(now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+        }, 60000); // Update every minute
+        return () => clearInterval(timer);
+    }, []);
+
+    const [sociusAvatarSource, setSociusAvatarSource] = useState(AVATAR_MAP['socius-icon']);
+
+    const roomColors = {
+        wall: isDark ? '#263238' : '#f5f5dc',
+        floor: isDark ? '#3e2723' : '#8b7355',
+        woodPlank: isDark ? '#4e342e' : '#a0826d',
+        woodPlankDark: isDark ? '#3e2723' : '#654321',
+        doorFrame: isDark ? '#424242' : '#fff',
+        doorKnob: isDark ? '#ffd700' : '#ffd700',
+        doorPanel: isDark ? '#616161' : '#f0f0f0',
+        deskTop: isDark ? '#5d4037' : '#8d6e63',
+        deskLeg: isDark ? '#3e2723' : '#5d4037',
+        screen: isDark ? '#1a237e' : '#1976d2',
+        screenBorder: isDark ? '#000' : '#333',
+        bedFrame: isDark ? '#3e2723' : '#3e2723',
+        mattress: isDark ? '#bdbdbd' : '#fff',
+        pillow: isDark ? '#757575' : '#e0e0e0',
+        blanket: isDark ? '#1565c0' : '#90caf9',
+        chairBack: isDark ? '#5d4037' : '#a0522d',
+        chairSeat: isDark ? '#3e2723' : '#8b4513',
+        chairLeg: isDark ? '#3e2723' : '#654321',
+        closetDoor: isDark ? '#616161' : '#fff',
+        closetHandle: isDark ? '#bdbdbd' : '#ccc',
+        lampShade: isDark ? '#ffca28' : '#e0e0e0', // Lit in dark mode?
+        lampBase: isDark ? '#424242' : '#8d6e63',
+        rug: isDark ? '#455a64' : '#e57373',
+        windowPane: isDark ? '#1a237e' : '#81d4fa',
+    };
+
+    // Load avatar preference
+    useFocusEffect(
+        useCallback(() => {
+            const loadAvatar = async () => {
+                try {
+                    const avatarId = await AsyncStorage.getItem('socius_avatar_preference');
+                    if (avatarId && AVATAR_MAP[avatarId]) {
+                        setSociusAvatarSource(AVATAR_MAP[avatarId]);
+                    } else {
+                        setSociusAvatarSource(AVATAR_MAP['socius-icon']);
+                    }
+                } catch (error) {
+                    console.log('Failed to load avatar preference', error);
+                }
+            };
+            loadAvatar();
+        }, [])
+    );
 
     // Floating animation
     const floatAnim = useRef(new Animated.Value(0)).current;
@@ -62,6 +130,7 @@ export default function HomeScreen() {
                 Animated.timing(floatAnim, {
                     toValue: 0,
                     duration: 2000,
+
                     easing: Easing.inOut(Easing.sin),
                     useNativeDriver: true,
                 }),
@@ -75,10 +144,7 @@ export default function HomeScreen() {
         outputRange: [0, -15],
     });
 
-    const handleSignOut = async () => {
-        setProfileModalVisible(false);
-        await signOut();
-    };
+
 
     const handlePress = (app: AppIcon) => {
         if (app.disabled) return;
@@ -87,7 +153,13 @@ export default function HomeScreen() {
         }
     };
 
-    const AppIconComponent = ({ app }: { app: AppIcon }) => {
+    const handleBackgroundPress = () => {
+        if (isEditMode) {
+            setIsEditMode(false);
+        }
+    };
+
+    const DraggableApp = ({ app }: { app: AppIcon }) => { // Renamed from AppIconComponent
         const pan = useRef(new Animated.ValueXY()).current;
         const [isLoaded, setIsLoaded] = useState(false);
         const isDragging = useRef(false);
@@ -116,35 +188,8 @@ export default function HomeScreen() {
 
         const panResponder = useRef(
             PanResponder.create({
-                onStartShouldSetPanResponderCapture: (evt, gestureState) => {
-                    // Check if touch is on drag handle area (top-right corner)
-                    const touchX = evt.nativeEvent.locationX;
-                    const touchY = evt.nativeEvent.locationY;
-
-                    // Icon button is 55x55, drag handle is at top: -8, right: -8, size: 24x24
-                    // So drag handle left edge is at 55 - 8 - 24 = 23px from container left
-                    // And right edge is at 55 - 8 = 47px from container left
-                    const iconSize = 55;
-                    const handleSize = 24;
-                    const handleOffset = 8;
-                    const handleLeft = iconSize - handleOffset - handleSize;
-                    const handleRight = iconSize - handleOffset;
-                    const handleTop = -handleOffset;
-                    const handleBottom = handleTop + handleSize;
-
-                    const isOnHandle = touchX >= handleLeft &&
-                        touchX <= handleRight &&
-                        touchY >= handleTop &&
-                        touchY <= handleBottom;
-
-                    console.log(`${app.label} touch at (${touchX.toFixed(1)}, ${touchY.toFixed(1)}), handle area: [${handleLeft}-${handleRight}, ${handleTop}-${handleBottom}], isOnHandle: ${isOnHandle}`);
-
-                    if (isOnHandle) {
-                        isDragging.current = true;
-                    }
-                    return isOnHandle;
-                },
-                onMoveShouldSetPanResponder: () => isDragging.current,
+                onStartShouldSetPanResponder: () => isEditMode,
+                onMoveShouldSetPanResponder: () => isEditMode,
                 onPanResponderGrant: () => {
                     isDragging.current = true;
                     // Fix the jump by properly flattening before starting new drag
@@ -195,18 +240,20 @@ export default function HomeScreen() {
                 ]}
             >
                 <TouchableOpacity
-                    style={[styles.iconButton, { backgroundColor: app.color }]}
-                    onPress={() => handlePress(app)}
                     activeOpacity={0.7}
+                    onPress={() => handlePress(app)}
+                    onLongPress={() => setIsEditMode(true)}
+                    delayLongPress={500}
+                    style={[styles.iconButton, { backgroundColor: app.color }]}
                 >
                     <Ionicons name={app.iconName} size={30} color="#fff" />
+                    {isEditMode && (
+                        <View style={styles.editBadge}>
+                            <Ionicons name="move" size={12} color="#fff" />
+                        </View>
+                    )}
                 </TouchableOpacity>
-                <Text style={styles.appLabel} pointerEvents="none">{app.label}</Text>
-
-                {/* Drag Handle - Visual indicator only */}
-                <View style={styles.dragHandle} pointerEvents="none">
-                    <Ionicons name="ellipsis-vertical" size={12} color="#666" />
-                </View>
+                <Text style={[styles.appLabel, { color: colors.text }]} pointerEvents="none">{app.label}</Text>
             </Animated.View>
         );
     };
@@ -217,7 +264,6 @@ export default function HomeScreen() {
             : { x: width * 0.55, y: height * 0.45 };
         const pan = useRef(new Animated.ValueXY()).current;
         const isDragging = useRef(false);
-        const avatarSize = type === 'socius' ? 80 : 40;
         const [isLoaded, setIsLoaded] = useState(false);
 
         useEffect(() => {
@@ -244,27 +290,8 @@ export default function HomeScreen() {
 
         const panResponder = useRef(
             PanResponder.create({
-                onStartShouldSetPanResponderCapture: (evt, gestureState) => {
-                    // Check if touch is on drag handle area
-                    const touchX = evt.nativeEvent.locationX;
-                    const touchY = evt.nativeEvent.locationY;
-
-                    // Drag handle is at top-right corner
-                    const handleLeft = avatarSize - 16;
-                    const handleTop = -8;
-                    const handleSize = 32;
-
-                    const isOnHandle = touchX >= handleLeft &&
-                        touchX <= handleLeft + handleSize &&
-                        touchY >= handleTop &&
-                        touchY <= handleTop + handleSize;
-
-                    if (isOnHandle) {
-                        isDragging.current = true;
-                    }
-                    return isOnHandle;
-                },
-                onMoveShouldSetPanResponder: () => isDragging.current,
+                onStartShouldSetPanResponder: () => isEditMode,
+                onMoveShouldSetPanResponder: () => isEditMode,
                 onPanResponderGrant: () => {
                     isDragging.current = true;
                     // Fix the jump by properly flattening before starting new drag
@@ -301,6 +328,16 @@ export default function HomeScreen() {
             return null; // Don't render until position is loaded
         }
 
+        const handleAvatarPress = () => {
+            if (!isEditMode) {
+                if (type === 'socius') {
+                    router.push('/chat');
+                } else if (type === 'me') {
+                    router.push('/profile' as any);
+                }
+            }
+        };
+
         return (
             <Animated.View
                 {...panResponder.panHandlers}
@@ -314,41 +351,53 @@ export default function HomeScreen() {
                     }
                 ]}
             >
-                {type === 'me' ? (
-                    <>
-                        <View style={styles.avatarHead}>
-                            <View style={styles.eye} />
-                            <View style={[styles.eye, { right: 10 }]} />
-                            <View style={styles.smile} />
-                        </View>
-                        <View style={styles.avatarBody} />
-                    </>
-                ) : (
-                    <Image
-                        source={require('../assets/images/socius-icon.png')}
-                        style={styles.sociusAvatarImage}
-                    />
-                )}
+                <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={handleAvatarPress}
+                    onLongPress={() => setIsEditMode(true)}
+                    delayLongPress={500}
+                    style={{ alignItems: 'center' }}
+                >
+                    {type === 'me' ? (
+                        <>
+                            <View style={styles.avatarHead}>
+                                <View style={styles.eye} />
+                                <View style={[styles.eye, { right: 10 }]} />
+                                <View style={styles.smile} />
+                            </View>
+                            <View style={styles.avatarBody} />
+                        </>
+                    ) : (
+                        <Image
+                            source={sociusAvatarSource}
+                            style={styles.sociusAvatarImage}
+                        />
+                    )}
+                </TouchableOpacity>
                 <View style={styles.labelContainer}>
-                    <Text style={styles.avatarLabel} pointerEvents="none">{type === 'me' ? 'Me' : 'Socius'}</Text>
-                </View>
-
-                {/* Drag Handle - Visual indicator only */}
-                <View style={styles.dragHandle} pointerEvents="none">
-                    <Ionicons name="ellipsis-vertical" size={12} color="#666" />
+                    <Text style={[styles.avatarLabel, { color: colors.text }]} pointerEvents="none">{type === 'me' ? (userInfo?.name || 'Me') : 'Socius'}</Text>
                 </View>
             </Animated.View>
         );
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+
+            {/* Header / Nav Bar with Glass Effect */}
             <View style={styles.header}>
+                <BlurView intensity={isDark ? 50 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
                 <View style={styles.atAGlance}>
-                    <Text style={styles.dateText}>{dateString}</Text>
+                    <Text style={[styles.dateText, { color: colors.text }]}>{dateString}</Text>
+                    <View style={styles.weatherContainer}>
+                        <Text style={[styles.weatherText, { color: colors.textSecondary }]}>{timeString}</Text>
+                        <Text style={[styles.weatherSeparator, { color: colors.textSecondary }]}> | </Text>
+                        <Ionicons name="partly-sunny" size={16} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                        <Text style={[styles.weatherText, { color: colors.textSecondary }]}>{weather.temp}°F {weather.condition}</Text>
+                    </View>
                 </View>
-                <TouchableOpacity style={styles.profileIcon} onPress={() => setProfileModalVisible(true)}>
+                <TouchableOpacity style={styles.profileIcon} onPress={() => router.push('/profile' as any)}>
                     {userInfo?.photo ? (
                         <Image source={{ uri: userInfo.photo }} style={styles.avatarImage} />
                     ) : (
@@ -359,121 +408,90 @@ export default function HomeScreen() {
                 </TouchableOpacity>
             </View>
 
-            <Modal
-                animationType="fade"
-                transparent={true}
-                visible={profileModalVisible}
-                onRequestClose={() => setProfileModalVisible(false)}
-            >
-                <TouchableWithoutFeedback onPress={() => setProfileModalVisible(false)}>
-                    <View style={styles.modalOverlay}>
-                        <TouchableWithoutFeedback>
-                            <View style={styles.profilePopup}>
-                                <View style={styles.popupHeader}>
-                                    {userInfo?.photo ? (
-                                        <Image source={{ uri: userInfo.photo }} style={styles.popupAvatar} />
-                                    ) : (
-                                        <View style={[styles.avatar, { width: 60, height: 60, borderRadius: 30 }]}>
-                                            <Text style={{ fontSize: 24, color: '#fff', fontWeight: 'bold' }}>{userInfo?.name?.charAt(0) || 'H'}</Text>
-                                        </View>
-                                    )}
-                                    <View style={styles.popupInfo}>
-                                        <Text style={styles.popupName}>{userInfo?.name || 'User'}</Text>
-                                        <Text style={styles.popupEmail}>{userInfo?.email || 'No email'}</Text>
-                                    </View>
-                                </View>
-                                <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-                                    <Text style={styles.signOutText}>Sign Out</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </TouchableWithoutFeedback>
+            <TouchableWithoutFeedback onPress={handleBackgroundPress}>
+                <View style={styles.roomContent}>
+                    {/* Wall */}
+                    <View style={[styles.wall, { backgroundColor: roomColors.wall }]} />
+
+                    {/* Floor with wood planks */}
+                    <View style={[styles.floor, { backgroundColor: roomColors.floor }]} >
+                        <View style={[styles.woodPlank, { backgroundColor: roomColors.woodPlank, borderBottomColor: roomColors.woodPlankDark }]} />
+                        <View style={[styles.woodPlank, { top: '12%', backgroundColor: roomColors.woodPlank, borderBottomColor: roomColors.woodPlankDark }]} />
+                        <View style={[styles.woodPlank, { top: '24%', backgroundColor: roomColors.woodPlank, borderBottomColor: roomColors.woodPlankDark }]} />
+                        <View style={[styles.woodPlank, { top: '36%', backgroundColor: roomColors.woodPlank, borderBottomColor: roomColors.woodPlankDark }]} />
+                        <View style={[styles.woodPlank, { top: '48%', backgroundColor: roomColors.woodPlank, borderBottomColor: roomColors.woodPlankDark }]} />
+                        <View style={[styles.woodPlank, { top: '60%', backgroundColor: roomColors.woodPlank, borderBottomColor: roomColors.woodPlankDark }]} />
+                        <View style={[styles.woodPlank, { top: '72%', backgroundColor: roomColors.woodPlank, borderBottomColor: roomColors.woodPlankDark }]} />
+                        <View style={[styles.woodPlank, { top: '84%', backgroundColor: roomColors.woodPlank, borderBottomColor: roomColors.woodPlankDark }]} />
                     </View>
-                </TouchableWithoutFeedback>
-            </Modal>
 
-            {/* Room Environment */}
-            <View style={styles.roomContent}>
-                {/* Wall */}
-                <View style={styles.wall} />
-
-                {/* Floor with wood planks */}
-                <View style={styles.floor}>
-                    <View style={styles.woodPlank} />
-                    <View style={[styles.woodPlank, { top: '12%' }]} />
-                    <View style={[styles.woodPlank, { top: '24%' }]} />
-                    <View style={[styles.woodPlank, { top: '36%' }]} />
-                    <View style={[styles.woodPlank, { top: '48%' }]} />
-                    <View style={[styles.woodPlank, { top: '60%' }]} />
-                    <View style={[styles.woodPlank, { top: '72%' }]} />
-                    <View style={[styles.woodPlank, { top: '84%' }]} />
-                </View>
-
-                {/* Door */}
-                <View style={styles.door}>
-                    <View style={styles.doorFrame} />
-                    <View style={styles.doorKnob} />
-                    <View style={styles.doorPanel} />
-                </View>
-
-                {/* Desk Area */}
-                <View style={styles.deskArea}>
-                    <View style={styles.deskTop} />
-                    <View style={styles.deskLeg} />
-                    <View style={[styles.deskLeg, { right: 0 }]} />
-                    <View style={styles.computer}>
-                        <View style={styles.screen} />
+                    {/* Door */}
+                    <View style={styles.door}>
+                        <View style={[styles.doorFrame, { backgroundColor: roomColors.doorFrame }]} />
+                        <View style={[styles.doorKnob, { backgroundColor: roomColors.doorKnob }]} />
+                        <View style={[styles.doorPanel, { backgroundColor: roomColors.doorPanel }]} />
                     </View>
+
+                    {/* Desk Area */}
+                    <View style={styles.deskArea}>
+                        <View style={[styles.deskTop, { backgroundColor: roomColors.deskTop }]} />
+                        <View style={[styles.deskLeg, { backgroundColor: roomColors.deskLeg }]} />
+                        <View style={[styles.deskLeg, { right: 0, backgroundColor: roomColors.deskLeg }]} />
+                        <View style={styles.computer}>
+                            <View style={[styles.screen, { backgroundColor: roomColors.screen, borderColor: roomColors.screenBorder }]} />
+                        </View>
+                    </View>
+
+                    {/* Bed Area */}
+                    <View style={styles.bedArea}>
+                        <View style={[styles.bedFrame, { backgroundColor: roomColors.bedFrame }]} />
+                        <View style={[styles.mattress, { backgroundColor: roomColors.mattress }]} />
+                        <View style={[styles.pillow, { backgroundColor: roomColors.pillow }]} />
+                        <View style={[styles.blanket, { backgroundColor: roomColors.blanket }]} />
+                    </View>
+
+                    {/* Chair */}
+                    <View style={styles.chair}>
+                        <View style={[styles.chairBack, { backgroundColor: roomColors.chairBack }]} />
+                        <View style={[styles.chairSeat, { backgroundColor: roomColors.chairSeat }]} />
+                        <View style={[styles.chairLeg, { backgroundColor: roomColors.chairLeg }]} />
+                        <View style={[styles.chairLeg, { right: 0, backgroundColor: roomColors.chairLeg }]} />
+                    </View>
+
+                    {/* Closet */}
+                    <View style={styles.closet}>
+                        <View style={[styles.closetDoor, { backgroundColor: roomColors.closetDoor }]} />
+                        <View style={[styles.closetDoor, { left: '50%', backgroundColor: roomColors.closetDoor }]} />
+                        <View style={[styles.closetHandle, { backgroundColor: roomColors.closetHandle }]} />
+                        <View style={[styles.closetHandle, { left: '70%', backgroundColor: roomColors.closetHandle }]} />
+                    </View>
+
+                    {/* Lamp */}
+                    <View style={styles.lamp}>
+                        <View style={[styles.lampShade, { backgroundColor: roomColors.lampShade }]} />
+                        <View style={[styles.lampBase, { backgroundColor: roomColors.lampBase }]} />
+                    </View>
+
+                    {/* Rug */}
+                    <View style={[styles.rug, { backgroundColor: roomColors.rug }]} />
+
+                    {/* Window */}
+                    <View style={styles.window}>
+                        <View style={[styles.windowPane, { backgroundColor: roomColors.windowPane }]} />
+                        <View style={[styles.windowPane, { left: '50%', backgroundColor: roomColors.windowPane }]} />
+                    </View>
+
+                    {/* Floating Avatars */}
+                    <DraggableAvatar type="me" />
+                    <DraggableAvatar type="socius" />
+
+                    {/* Draggable App Icons */}
+                    {APPS.map(app => (
+                        <DraggableApp key={app.id} app={app} />
+                    ))}
                 </View>
-
-                {/* Bed Area */}
-                <View style={styles.bedArea}>
-                    <View style={styles.bedFrame} />
-                    <View style={styles.mattress} />
-                    <View style={styles.pillow} />
-                    <View style={styles.blanket} />
-                </View>
-
-                {/* Chair */}
-                <View style={styles.chair}>
-                    <View style={styles.chairBack} />
-                    <View style={styles.chairSeat} />
-                    <View style={styles.chairLeg} />
-                    <View style={[styles.chairLeg, { right: 0 }]} />
-                </View>
-
-                {/* Closet */}
-                <View style={styles.closet}>
-                    <View style={styles.closetDoor} />
-                    <View style={[styles.closetDoor, { left: '50%' }]} />
-                    <View style={styles.closetHandle} />
-                    <View style={[styles.closetHandle, { left: '70%' }]} />
-                </View>
-
-                {/* Lamp */}
-                <View style={styles.lamp}>
-                    <View style={styles.lampShade} />
-                    <View style={styles.lampBase} />
-                </View>
-
-                {/* Rug */}
-                <View style={styles.rug} />
-
-                {/* Window */}
-                <View style={styles.window}>
-                    <View style={styles.windowPane} />
-                    <View style={[styles.windowPane, { left: '50%' }]} />
-                </View>
-
-                {/* Floating Avatars */}
-                <DraggableAvatar type="me" />
-                <DraggableAvatar type="socius" />
-
-                {/* Draggable App Icons */}
-                {APPS.map(app => (
-                    <AppIconComponent key={app.id} app={app} />
-                ))}
-            </View>
-        </SafeAreaView >
+            </TouchableWithoutFeedback>
+        </SafeAreaView>
     );
 }
 
@@ -483,27 +501,89 @@ const styles = StyleSheet.create({
         backgroundColor: '#f0f4f8',
     },
     header: {
+        position: 'absolute',
+        top: 60,
+        left: 20,
+        right: 20,
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        paddingHorizontal: 24,
-        paddingTop: 50,
-        paddingBottom: 10,
-        backgroundColor: 'transparent',
+        alignItems: 'center',
+        padding: 20,
+        borderRadius: 20,
+        overflow: 'hidden', // Ensure blur stays inside rounded corners
+        zIndex: 10,
+    },
+    headerContainer: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         zIndex: 1000,
+        overflow: 'hidden',
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+    },
+    blurContainer: {
+        paddingTop: 50,
+        paddingBottom: 15,
+        paddingHorizontal: 20,
+    },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    dateContainer: {
+        flexDirection: 'column',
+    },
+    dayText: {
+        fontSize: 14,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    dateText: {
+        fontSize: 24,
+        fontWeight: '300',
+    },
+    profileImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    editBadge: {
+        position: 'absolute',
+        top: -5,
+        right: -5,
+        backgroundColor: '#f44336',
+        borderRadius: 10,
+        width: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#fff',
     },
     atAGlance: {
         flexDirection: 'column',
     },
-    dateText: {
-        fontSize: 24,
-        fontWeight: '400',
-        color: '#333',
+    weatherContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
     },
+    weatherText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    weatherSeparator: {
+        fontSize: 14,
+        fontWeight: '300',
+        marginHorizontal: 5,
+    },
+
     profileIcon: {
         padding: 5,
     },
@@ -794,6 +874,7 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
         elevation: 3,
     },
+
     chair: {
         position: 'absolute',
         left: '5%',

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const API_URL = 'https://api.oakhillpines.com';
+const API_URL = 'https://api.oakhillpines.com/api/socius';
 
 const api = axios.create({
     baseURL: API_URL,
