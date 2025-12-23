@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Image, ActivityIndicator, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { GiftedChat, IMessage, User, Bubble, Avatar, InputToolbar } from 'react-native-gifted-chat';
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -7,7 +7,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { fixTimestamp } from '../utils/date';
 import { AVATAR_MAP } from '../constants/avatars';
+import { useNotifications } from '../context/NotificationContext';
 
 const BOT_USER: User = {
     _id: 2,
@@ -29,16 +31,26 @@ const SociusAvatar = ({ source }: { source: any }) => {
 interface ChatInterfaceProps {
     onClose?: () => void;
     isModal?: boolean;
+    initialMessage?: string;
 }
 
-export default function ChatInterface({ onClose, isModal = false }: ChatInterfaceProps) {
+export default function ChatInterface({ onClose, isModal = false, initialMessage = '' }: ChatInterfaceProps) {
     const { colors } = useTheme();
     const { user } = useAuth(); // Use AuthContext for user info if available
     const [messages, setMessages] = useState<IMessage[]>([]);
+    const [text, setText] = useState(initialMessage);
     const [isTyping, setIsTyping] = useState(false);
     // const [userInfo, setUserInfo] = useState<any>(null); // Replaced by useAuth
     const selectedModel = 'soc-llama3.2:3b';
     const [botAvatarSource, setBotAvatarSource] = useState(AVATAR_MAP['socius-icon']);
+    const { lastNotificationTime, refreshNotifications } = useNotifications();
+    const textInputRef = useRef<any>(null);
+
+    useEffect(() => {
+        if (initialMessage && text !== initialMessage) {
+            setText(initialMessage);
+        }
+    }, [initialMessage]);
 
     useEffect(() => {
         // Load avatar preference
@@ -64,7 +76,7 @@ export default function ChatInterface({ onClose, isModal = false }: ChatInterfac
                 const formattedMessages = history.map((msg: any) => ({
                     _id: msg.id,
                     text: msg.content,
-                    createdAt: new Date(msg.created_at),
+                    createdAt: fixTimestamp(msg.created_at),
                     user: msg.role === 'user' ? {
                         _id: 1,
                         name: user?.name || 'Me',
@@ -98,7 +110,7 @@ export default function ChatInterface({ onClose, isModal = false }: ChatInterfac
         };
 
         fetchHistory();
-    }, [user?.photo]);
+    }, [user?.photo, lastNotificationTime]); // Reload when user changes or notification arrives
 
     const handleSendQuestion = useCallback(async (text: string) => {
         setIsTyping(true);
@@ -109,7 +121,7 @@ export default function ChatInterface({ onClose, isModal = false }: ChatInterfac
             });
 
             const { question_id } = res.data;
-            pollAnswer(question_id, selectedModel);
+            // No polling here anymore
         } catch (error) {
             console.error('Error sending question:', error);
             setIsTyping(false);
@@ -119,36 +131,19 @@ export default function ChatInterface({ onClose, isModal = false }: ChatInterfac
 
     const onSend = useCallback((newMessages: IMessage[] = []) => {
         setMessages((previousMessages) => GiftedChat.append(previousMessages, newMessages));
-        const text = newMessages[0].text;
-        handleSendQuestion(text);
+        const messageText = newMessages[0].text;
+        handleSendQuestion(messageText);
+        setText(''); // Clear input after sending
     }, [handleSendQuestion]);
 
-    const pollAnswer = async (qid: string, modelUsed: string) => {
-        const interval = setInterval(async () => {
-            try {
-                const res = await api.get(`/get_answer/${qid}`, {
-                    params: { model: modelUsed }
-                });
-                const data = res.data;
+    // Removed pollAnswer logic
 
-                if (data.status === 'answered') {
-                    clearInterval(interval);
-                    setIsTyping(false);
-                    appendBotMessage(data.answer);
-                }
-            } catch (error) {
-                console.error('Polling error:', error);
-            }
-        }, 2000);
-
-        setTimeout(() => {
-            clearInterval(interval);
-            if (isTyping) {
-                setIsTyping(false);
-                appendBotMessage('Response timed out.');
-            }
-        }, 120000);
-    };
+    // Effect to clear typing when a new message arrives (triggered by fetchHistory in useEffect)
+    useEffect(() => {
+        if (messages.length > 0 && messages[0].user._id !== 1) {
+            setIsTyping(false);
+        }
+    }, [messages]);
 
     const appendBotMessage = (text: string) => {
         const msg: IMessage = {
@@ -206,6 +201,7 @@ export default function ChatInterface({ onClose, isModal = false }: ChatInterfac
                 borderTopWidth: 1,
             }}
             primaryStyle={{ alignItems: 'center' }}
+            textInputStyle={{ color: colors.text }}
         />
     );
 
@@ -243,32 +239,40 @@ export default function ChatInterface({ onClose, isModal = false }: ChatInterfac
                     <View style={{ width: 40 }} />
                 )}
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Socius Chat</Text>
-                <TouchableOpacity onPress={clearHistory} style={styles.clearButton}>
-                    <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
+                <View style={{ width: 40 }} />
             </View>
 
-            <GiftedChat
-                messages={messages}
-                onSend={(messages) => onSend(messages)}
-                user={{
-                    _id: 1,
-                    name: user?.name || 'Me',
-                    avatar: user?.photo || undefined,
-                }}
-                isTyping={isTyping}
-                renderBubble={renderBubble}
-                renderAvatar={renderAvatar}
-                renderInputToolbar={renderInputToolbar}
-                showUserAvatar={true}
-                alwaysShowSend
-                isScrollToBottomEnabled
-                renderUsernameOnMessage={true}
-                timeTextStyle={{
-                    left: { color: colors.textSecondary },
-                    right: { color: 'rgba(255, 255, 255, 0.7)' }
-                }}
-            />
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                enabled={Platform.OS === 'ios'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+            >
+                <GiftedChat
+                    messages={messages}
+                    text={text}
+                    textInputRef={textInputRef}
+                    onInputTextChanged={setText}
+                    onSend={(messages) => onSend(messages)}
+                    user={{
+                        _id: 1,
+                        name: user?.name || 'Me',
+                        avatar: user?.photo || undefined,
+                    }}
+                    isTyping={isTyping}
+                    renderBubble={renderBubble}
+                    renderAvatar={renderAvatar}
+                    renderInputToolbar={renderInputToolbar}
+                    showUserAvatar={true}
+                    alwaysShowSend
+                    isScrollToBottomEnabled
+                    renderUsernameOnMessage={true}
+                    timeTextStyle={{
+                        left: { color: colors.textSecondary },
+                        right: { color: 'rgba(255, 255, 255, 0.7)' }
+                    }}
+                />
+            </KeyboardAvoidingView>
         </View>
     );
 }

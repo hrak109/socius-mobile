@@ -5,8 +5,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
+import { fixTimestamp } from '../../utils/date';
 import { useSession } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useNotifications } from '../../context/NotificationContext';
 
 export default function DMScreen() {
     const { id, username } = useLocalSearchParams<{ id: string, username?: string }>();
@@ -17,14 +19,12 @@ export default function DMScreen() {
     const [friendUsername, setFriendUsername] = useState<string>(username || 'Chat');
     const [isLoading, setIsLoading] = useState(true);
 
+    const { lastNotificationTime, refreshNotifications } = useNotifications();
+
     useEffect(() => {
         // Fetch friend details (or infer just chat history)
-        // For simplicity, we just fetch chat history which might not have username if empty
-        // Ideally we should have an endpoint GET /users/{id} or pass name via params
-        // We'll rely on the conversations list passing it or just fetching it.
-        // Let's fetch messages first.
         fetchMessages();
-    }, [id]);
+    }, [id, lastNotificationTime]); // Refetch when notification arrives
 
     const fetchMessages = async () => {
         try {
@@ -32,7 +32,7 @@ export default function DMScreen() {
             const apiMessages = res.data.map((msg: any) => ({
                 _id: msg.id,
                 text: msg.content,
-                createdAt: new Date(msg.created_at),
+                createdAt: fixTimestamp(msg.created_at),
                 user: {
                     _id: msg.is_me ? 1 : 2, // 1 is me, 2 is other
                     name: msg.is_me ? 'Me' : 'Friend',
@@ -45,6 +45,8 @@ export default function DMScreen() {
             console.error(error);
         } finally {
             setIsLoading(false);
+            // Refresh unread count since we just read messages
+            refreshNotifications();
         }
     };
 

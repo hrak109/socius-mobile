@@ -3,9 +3,11 @@ import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import api from '../services/api';
+import api from '../../services/api';
 import { formatDistanceToNow } from 'date-fns';
-import { useTheme } from '../context/ThemeContext';
+import { fixTimestamp } from '../../utils/date';
+import { useTheme } from '../../context/ThemeContext';
+import { useNotifications } from '../../context/NotificationContext';
 
 type Conversation = {
     friend_id: number;
@@ -31,16 +33,18 @@ export default function MessagesScreen() {
         }
     };
 
+    const { lastNotificationTime } = useNotifications();
+
     useFocusEffect(
         useCallback(() => {
             fetchConversations();
-        }, [])
+        }, [lastNotificationTime]) // Refetch when notification arrives
     );
 
     const renderChatItem = ({ item }: { item: Conversation }) => (
         <TouchableOpacity
             style={styles.chatItem}
-            onPress={() => router.push({ pathname: '/dm/[id]', params: { id: item.friend_id, username: item.friend_username } } as any)}
+            onPress={() => router.push({ pathname: '/messages/[id]', params: { id: item.friend_id, username: item.friend_username } } as any)}
             activeOpacity={0.7}
         >
             <View style={styles.chatAvatarContainer}>
@@ -60,7 +64,7 @@ export default function MessagesScreen() {
                         <>
                             <Text style={[styles.chatSeparator, { color: colors.textSecondary }]}>·</Text>
                             <Text style={[styles.chatTime, { color: colors.textSecondary }]}>
-                                {formatDistanceToNow(new Date(item.last_message_time), { addSuffix: true })}
+                                {formatDistanceToNow(fixTimestamp(item.last_message_time), { addSuffix: true })}
                             </Text>
                         </>
                     )}

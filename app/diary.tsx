@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
+import { fixTimestamp } from '../utils/date';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -101,8 +102,8 @@ export default function DiaryScreen() {
             <View style={[styles.entryCard, { backgroundColor: colors.card, shadowColor: '#000' }]}>
                 <View style={styles.cardHeader}>
                     <View style={[styles.dateBadge, { backgroundColor: colors.inputBackground }]}>
-                        <Text style={[styles.dateDay, { color: colors.primary }]}>{format(new Date(item.date), 'dd')}</Text>
-                        <Text style={[styles.dateMonth, { color: colors.textSecondary }]}>{format(new Date(item.date), 'MMM')}</Text>
+                        <Text style={[styles.dateDay, { color: colors.primary }]}>{format(fixTimestamp(item.date), 'dd')}</Text>
+                        <Text style={[styles.dateMonth, { color: colors.textSecondary }]}>{format(fixTimestamp(item.date), 'MMM')}</Text>
                     </View>
                     {!isEditing && (
                         <TouchableOpacity onPress={() => startEditing(item)} style={styles.editIcon}>
@@ -147,7 +148,7 @@ export default function DiaryScreen() {
                         <Text style={[styles.entryPreview, { color: colors.textSecondary }]} numberOfLines={item.title ? 2 : 4}>
                             {item.content}
                         </Text>
-                        <Text style={[styles.entryTime, { color: colors.textSecondary }]}>{format(new Date(item.date), 'h:mm a')}</Text>
+                        <Text style={[styles.entryTime, { color: colors.textSecondary }]}>{format(fixTimestamp(item.date), 'h:mm a')}</Text>
                     </View>
                 )}
             </View>

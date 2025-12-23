@@ -24,6 +24,7 @@ interface AppIcon {
 
 import { AVATAR_MAP } from '../constants/avatars';
 import { useTheme } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationContext';
 
 // ...
 
@@ -38,7 +39,7 @@ const APPS: AppIcon[] = [
 export default function HomeScreen() {
     const router = useRouter();
     const { signOut } = useSession();
-    const { colors, isDark } = useTheme();
+    const { colors, isDark, avatarId } = useTheme();
     const [userInfo, setUserInfo] = useState<any>(null);
     const [isEditMode, setIsEditMode] = useState(false);
     const date = new Date();
@@ -54,7 +55,11 @@ export default function HomeScreen() {
         return () => clearInterval(timer);
     }, []);
 
-    const [sociusAvatarSource, setSociusAvatarSource] = useState(AVATAR_MAP['socius-icon']);
+    // Removed local sociusAvatarSource state and useFocusEffect loading logic
+    const sociusAvatarSource = AVATAR_MAP[avatarId] || AVATAR_MAP['socius-icon'];
+
+    // Floating animation
+    const floatAnim = useRef(new Animated.Value(0)).current;
 
     const roomColors = {
         wall: isDark ? '#263238' : '#f5f5dc',
@@ -83,28 +88,6 @@ export default function HomeScreen() {
         windowPane: isDark ? '#1a237e' : '#81d4fa',
     };
 
-    // Load avatar preference
-    useFocusEffect(
-        useCallback(() => {
-            const loadAvatar = async () => {
-                try {
-                    const avatarId = await AsyncStorage.getItem('socius_avatar_preference');
-                    if (avatarId && AVATAR_MAP[avatarId]) {
-                        setSociusAvatarSource(AVATAR_MAP[avatarId]);
-                    } else {
-                        setSociusAvatarSource(AVATAR_MAP['socius-icon']);
-                    }
-                } catch (error) {
-                    console.log('Failed to load avatar preference', error);
-                }
-            };
-            loadAvatar();
-        }, [])
-    );
-
-    // Floating animation
-    const floatAnim = useRef(new Animated.Value(0)).current;
-
     useEffect(() => {
         const loadUserProfile = async () => {
             try {
@@ -130,7 +113,6 @@ export default function HomeScreen() {
                 Animated.timing(floatAnim, {
                     toValue: 0,
                     duration: 2000,
-
                     easing: Easing.inOut(Easing.sin),
                     useNativeDriver: true,
                 }),
@@ -144,241 +126,10 @@ export default function HomeScreen() {
         outputRange: [0, -15],
     });
 
-
-
-    const handlePress = (app: AppIcon) => {
-        if (app.disabled) return;
-        if (app.route) {
-            router.push(app.route as any);
-        }
-    };
-
     const handleBackgroundPress = () => {
         if (isEditMode) {
             setIsEditMode(false);
         }
-    };
-
-    const DraggableApp = ({ app }: { app: AppIcon }) => { // Renamed from AppIconComponent
-        const pan = useRef(new Animated.ValueXY()).current;
-        const [isLoaded, setIsLoaded] = useState(false);
-        const isDragging = useRef(false);
-
-        useEffect(() => {
-            // Load saved position
-            const loadPosition = async () => {
-                try {
-                    const saved = await AsyncStorage.getItem(`icon_pos_${app.id}`);
-                    if (saved) {
-                        const pos = JSON.parse(saved);
-                        pan.setValue({ x: 0, y: 0 });
-                        pan.setOffset({ x: pos.x, y: pos.y });
-                    } else {
-                        pan.setValue({ x: 0, y: 0 });
-                        pan.setOffset({ x: app.initialX, y: app.initialY });
-                    }
-                } catch (error) {
-                    pan.setValue({ x: 0, y: 0 });
-                    pan.setOffset({ x: app.initialX, y: app.initialY });
-                }
-                setIsLoaded(true);
-            };
-            loadPosition();
-        }, []);
-
-        const panResponder = useRef(
-            PanResponder.create({
-                onStartShouldSetPanResponder: () => isEditMode,
-                onMoveShouldSetPanResponder: () => isEditMode,
-                onPanResponderGrant: () => {
-                    isDragging.current = true;
-                    // Fix the jump by properly flattening before starting new drag
-                    pan.setOffset({
-                        x: (pan.x as any)._value + (pan.x as any)._offset,
-                        y: (pan.y as any)._value + (pan.y as any)._offset
-                    });
-                    pan.setValue({ x: 0, y: 0 });
-                },
-                onPanResponderMove: Animated.event(
-                    [null, { dx: pan.x, dy: pan.y }],
-                    { useNativeDriver: false }
-                ),
-                onPanResponderRelease: async () => {
-                    // Calculate final position before flattening
-                    const finalX = (pan.x as any)._value + (pan.x as any)._offset;
-                    const finalY = (pan.y as any)._value + (pan.y as any)._offset;
-
-                    pan.flattenOffset();
-                    isDragging.current = false;
-
-                    // Save position
-                    try {
-                        await AsyncStorage.setItem(`icon_pos_${app.id}`, JSON.stringify({ x: finalX, y: finalY }));
-                        console.log(`Saved position for ${app.id}:`, { x: finalX, y: finalY });
-                    } catch (error) {
-                        console.log('Failed to save position', error);
-                    }
-                },
-            })
-        ).current;
-
-        if (!isLoaded) {
-            return null; // Don't render until position is loaded
-        }
-
-        return (
-            <Animated.View
-                {...panResponder.panHandlers}
-                style={[
-                    styles.appIconContainer,
-                    {
-                        transform: [
-                            { translateX: pan.x },
-                            { translateY: Animated.add(pan.y, translateY) }
-                        ]
-                    }
-                ]}
-            >
-                <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => handlePress(app)}
-                    onLongPress={() => setIsEditMode(true)}
-                    delayLongPress={500}
-                    style={[styles.iconButton, { backgroundColor: app.color }]}
-                >
-                    <Ionicons name={app.iconName} size={30} color="#fff" />
-                    {isEditMode && (
-                        <View style={styles.editBadge}>
-                            <Ionicons name="move" size={12} color="#fff" />
-                        </View>
-                    )}
-                </TouchableOpacity>
-                <Text style={[styles.appLabel, { color: colors.text }]} pointerEvents="none">{app.label}</Text>
-            </Animated.View>
-        );
-    };
-
-    const DraggableAvatar = ({ type }: { type: 'me' | 'socius' }) => {
-        const initialPos = type === 'me'
-            ? { x: width * 0.2, y: height * 0.35 }
-            : { x: width * 0.55, y: height * 0.45 };
-        const pan = useRef(new Animated.ValueXY()).current;
-        const isDragging = useRef(false);
-        const [isLoaded, setIsLoaded] = useState(false);
-
-        useEffect(() => {
-            // Load saved position
-            const loadPosition = async () => {
-                try {
-                    const saved = await AsyncStorage.getItem(`avatar_pos_${type}`);
-                    if (saved) {
-                        const pos = JSON.parse(saved);
-                        pan.setValue({ x: 0, y: 0 });
-                        pan.setOffset({ x: pos.x, y: pos.y });
-                    } else {
-                        pan.setValue({ x: 0, y: 0 });
-                        pan.setOffset(initialPos);
-                    }
-                } catch (error) {
-                    pan.setValue({ x: 0, y: 0 });
-                    pan.setOffset(initialPos);
-                }
-                setIsLoaded(true);
-            };
-            loadPosition();
-        }, []);
-
-        const panResponder = useRef(
-            PanResponder.create({
-                onStartShouldSetPanResponder: () => isEditMode,
-                onMoveShouldSetPanResponder: () => isEditMode,
-                onPanResponderGrant: () => {
-                    isDragging.current = true;
-                    // Fix the jump by properly flattening before starting new drag
-                    pan.setOffset({
-                        x: (pan.x as any)._value + (pan.x as any)._offset,
-                        y: (pan.y as any)._value + (pan.y as any)._offset
-                    });
-                    pan.setValue({ x: 0, y: 0 });
-                },
-                onPanResponderMove: Animated.event(
-                    [null, { dx: pan.x, dy: pan.y }],
-                    { useNativeDriver: false }
-                ),
-                onPanResponderRelease: async () => {
-                    // Calculate final position before flattening
-                    const finalX = (pan.x as any)._value + (pan.x as any)._offset;
-                    const finalY = (pan.y as any)._value + (pan.y as any)._offset;
-
-                    pan.flattenOffset();
-                    isDragging.current = false;
-
-                    // Save position
-                    try {
-                        await AsyncStorage.setItem(`avatar_pos_${type}`, JSON.stringify({ x: finalX, y: finalY }));
-                        console.log(`Saved avatar position for ${type}:`, { x: finalX, y: finalY });
-                    } catch (error) {
-                        console.log('Failed to save avatar position', error);
-                    }
-                },
-            })
-        ).current;
-
-        if (!isLoaded) {
-            return null; // Don't render until position is loaded
-        }
-
-        const handleAvatarPress = () => {
-            if (!isEditMode) {
-                if (type === 'socius') {
-                    router.push('/chat');
-                } else if (type === 'me') {
-                    router.push('/profile' as any);
-                }
-            }
-        };
-
-        return (
-            <Animated.View
-                {...panResponder.panHandlers}
-                style={[
-                    styles.avatarContainer,
-                    {
-                        transform: [
-                            { translateX: pan.x },
-                            { translateY: Animated.add(pan.y, translateY) }
-                        ]
-                    }
-                ]}
-            >
-                <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={handleAvatarPress}
-                    onLongPress={() => setIsEditMode(true)}
-                    delayLongPress={500}
-                    style={{ alignItems: 'center' }}
-                >
-                    {type === 'me' ? (
-                        <>
-                            <View style={styles.avatarHead}>
-                                <View style={styles.eye} />
-                                <View style={[styles.eye, { right: 10 }]} />
-                                <View style={styles.smile} />
-                            </View>
-                            <View style={styles.avatarBody} />
-                        </>
-                    ) : (
-                        <Image
-                            source={sociusAvatarSource}
-                            style={styles.sociusAvatarImage}
-                        />
-                    )}
-                </TouchableOpacity>
-                <View style={styles.labelContainer}>
-                    <Text style={[styles.avatarLabel, { color: colors.text }]} pointerEvents="none">{type === 'me' ? (userInfo?.name || 'Me') : 'Socius'}</Text>
-                </View>
-            </Animated.View>
-        );
     };
 
     return (
@@ -482,18 +233,325 @@ export default function HomeScreen() {
                     </View>
 
                     {/* Floating Avatars */}
-                    <DraggableAvatar type="me" />
-                    <DraggableAvatar type="socius" />
+                    <DraggableAvatar
+                        type="me"
+                        isEditMode={isEditMode}
+                        setIsEditMode={setIsEditMode}
+                        translateY={translateY}
+                        userInfo={userInfo}
+                    />
+                    <DraggableAvatar
+                        type="socius"
+                        isEditMode={isEditMode}
+                        setIsEditMode={setIsEditMode}
+                        translateY={translateY}
+                        sociusAvatarSource={sociusAvatarSource}
+                    />
 
                     {/* Draggable App Icons */}
                     {APPS.map(app => (
-                        <DraggableApp key={app.id} app={app} />
+                        <DraggableApp
+                            key={app.id}
+                            app={app}
+                            isEditMode={isEditMode}
+                            setIsEditMode={setIsEditMode}
+                            translateY={translateY}
+                        />
                     ))}
                 </View>
             </TouchableWithoutFeedback>
         </SafeAreaView>
     );
 }
+
+// Extracted Components
+const DraggableApp = ({ app, isEditMode, setIsEditMode, translateY }: {
+    app: AppIcon,
+    isEditMode: boolean,
+    setIsEditMode: (val: boolean) => void,
+    translateY: Animated.AnimatedInterpolation<string | number>
+}) => {
+    const router = useRouter();
+    const { colors, isDark } = useTheme(); // Use theme here
+    const pan = useRef(new Animated.ValueXY()).current;
+    const opacity = useRef(new Animated.Value(0)).current; // Start invisible
+    const [isLoaded, setIsLoaded] = useState(false);
+    const isDragging = useRef(false);
+    
+    // Fix stale closure in PanResponder
+    const currentEditMode = useRef(isEditMode);
+    useEffect(() => {
+        currentEditMode.current = isEditMode;
+    }, [isEditMode]);
+
+    useEffect(() => {
+        // Load saved position
+        const loadPosition = async () => {
+            try {
+                const saved = await AsyncStorage.getItem(`icon_pos_${app.id}`);
+                if (saved) {
+                    const pos = JSON.parse(saved);
+                    pan.setValue({ x: 0, y: 0 });
+                    pan.setOffset({ x: pos.x, y: pos.y });
+                } else {
+                    pan.setValue({ x: 0, y: 0 });
+                    pan.setOffset({ x: app.initialX, y: app.initialY });
+                }
+            } catch (error) {
+                pan.setValue({ x: 0, y: 0 });
+                pan.setOffset({ x: app.initialX, y: app.initialY });
+            }
+            setIsLoaded(true);
+            Animated.timing(opacity, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: true,
+            }).start();
+        };
+        loadPosition();
+    }, []);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => currentEditMode.current,
+            onMoveShouldSetPanResponder: () => currentEditMode.current,
+            onPanResponderGrant: () => {
+                isDragging.current = true;
+                // Fix the jump by properly flattening before starting new drag
+                pan.setOffset({
+                    x: (pan.x as any)._value + (pan.x as any)._offset,
+                    y: (pan.y as any)._value + (pan.y as any)._offset
+                });
+                pan.setValue({ x: 0, y: 0 });
+            },
+            onPanResponderMove: Animated.event(
+                [null, { dx: pan.x, dy: pan.y }],
+                { useNativeDriver: false }
+            ),
+            onPanResponderRelease: async () => {
+                // Calculate final position before flattening
+                const finalX = (pan.x as any)._value + (pan.x as any)._offset;
+                const finalY = (pan.y as any)._value + (pan.y as any)._offset;
+
+                pan.flattenOffset();
+                isDragging.current = false;
+
+                // Save position
+                try {
+                    await AsyncStorage.setItem(`icon_pos_${app.id}`, JSON.stringify({ x: finalX, y: finalY }));
+                    console.log(`Saved position for ${app.id}:`, { x: finalX, y: finalY });
+                } catch (error) {
+                    console.log('Failed to save position', error);
+                }
+            },
+        })
+    ).current;
+
+    const handlePress = () => {
+        if (app.disabled) return;
+        if (app.route) {
+            router.push(app.route as any);
+        }
+    };
+
+    if (!isLoaded) {
+        return null; // Don't render until position is loaded
+    }
+
+    // Use notifications context for badges
+    const { unreadCount } = useNotifications();
+
+    return (
+        <Animated.View
+            {...panResponder.panHandlers}
+            style={[
+                styles.appIconContainer,
+                {
+                    opacity, // Apply fade in
+                    transform: [
+                        { translateX: pan.x },
+                        { translateY: Animated.add(pan.y, translateY) }
+                    ]
+                }
+            ]}
+        >
+            <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handlePress}
+                onLongPress={() => setIsEditMode(true)}
+                delayLongPress={500}
+                style={[styles.iconButton, { backgroundColor: app.color }]}
+            >
+                <Ionicons name={app.iconName} size={30} color="#fff" />
+                {isEditMode && (
+                    <View style={styles.editBadge}>
+                        <Ionicons name="move" size={12} color="#fff" />
+                    </View>
+                )}
+
+                {/* Notification Badge */}
+                {!isEditMode && unreadCount > 0 && (app.id === 'friends' || app.id === 'chat') && (
+                    <View style={styles.notificationBadge}>
+                        <Text style={styles.notificationText}>{unreadCount}</Text>
+                    </View>
+                )}
+            </TouchableOpacity>
+            <Text style={[
+                styles.appLabel,
+                {
+                    color: colors.text,
+                    backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)'
+                }
+            ]} pointerEvents="none">{app.label}</Text>
+        </Animated.View>
+    );
+};
+
+const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo, sociusAvatarSource }: {
+    type: 'me' | 'socius',
+    isEditMode: boolean,
+    setIsEditMode: (val: boolean) => void,
+    translateY: Animated.AnimatedInterpolation<string | number>,
+    userInfo?: any,
+    sociusAvatarSource?: any
+}) => {
+    const router = useRouter();
+    const { colors } = useTheme(); // Use theme here
+    const initialPos = type === 'me'
+        ? { x: width * 0.2, y: height * 0.35 }
+        : { x: width * 0.55, y: height * 0.45 };
+    const pan = useRef(new Animated.ValueXY()).current;
+    const opacity = useRef(new Animated.Value(0)).current; // Start invisible
+    const isDragging = useRef(false);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // Fix stale closure in PanResponder
+    const currentEditMode = useRef(isEditMode);
+    useEffect(() => {
+        currentEditMode.current = isEditMode;
+    }, [isEditMode]);
+
+    useEffect(() => {
+        // Load saved position
+        const loadPosition = async () => {
+            try {
+                const saved = await AsyncStorage.getItem(`avatar_pos_${type}`);
+                if (saved) {
+                    const pos = JSON.parse(saved);
+                    pan.setValue({ x: 0, y: 0 });
+                    pan.setOffset({ x: pos.x, y: pos.y });
+                } else {
+                    pan.setValue({ x: 0, y: 0 });
+                    pan.setOffset(initialPos);
+                }
+            } catch (error) {
+                pan.setValue({ x: 0, y: 0 });
+                pan.setOffset(initialPos);
+            }
+            setIsLoaded(true);
+            Animated.timing(opacity, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: true,
+            }).start();
+        };
+        loadPosition();
+    }, []);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => currentEditMode.current,
+            onMoveShouldSetPanResponder: () => currentEditMode.current,
+            onPanResponderGrant: () => {
+                isDragging.current = true;
+                // Fix the jump by properly flattening before starting new drag
+                pan.setOffset({
+                    x: (pan.x as any)._value + (pan.x as any)._offset,
+                    y: (pan.y as any)._value + (pan.y as any)._offset
+                });
+                pan.setValue({ x: 0, y: 0 });
+            },
+            onPanResponderMove: Animated.event(
+                [null, { dx: pan.x, dy: pan.y }],
+                { useNativeDriver: false }
+            ),
+            onPanResponderRelease: async () => {
+                // Calculate final position before flattening
+                const finalX = (pan.x as any)._value + (pan.x as any)._offset;
+                const finalY = (pan.y as any)._value + (pan.y as any)._offset;
+
+                pan.flattenOffset();
+                isDragging.current = false;
+
+                // Save position
+                try {
+                    await AsyncStorage.setItem(`avatar_pos_${type}`, JSON.stringify({ x: finalX, y: finalY }));
+                    console.log(`Saved avatar position for ${type}:`, { x: finalX, y: finalY });
+                } catch (error) {
+                    console.log('Failed to save avatar position', error);
+                }
+            },
+        })
+    ).current;
+
+    const handleAvatarPress = () => {
+        if (!isEditMode) {
+            if (type === 'socius') {
+                router.push('/chat' as any);
+            } else if (type === 'me') {
+                router.push('/profile' as any);
+            }
+        }
+    };
+
+    if (!isLoaded) {
+        return null; // Don't render until position is loaded
+    }
+
+    return (
+        <Animated.View
+            {...panResponder.panHandlers}
+            style={[
+                styles.avatarContainer,
+                {
+                    opacity, // Apply fade in
+                    transform: [
+                        { translateX: pan.x },
+                        { translateY: Animated.add(pan.y, translateY) }
+                    ]
+                }
+            ]}
+        >
+            <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={handleAvatarPress}
+                onLongPress={() => setIsEditMode(true)}
+                delayLongPress={500}
+                style={{ alignItems: 'center' }}
+            >
+                {type === 'me' ? (
+                    <>
+                        <View style={styles.avatarHead}>
+                            <View style={styles.eye} />
+                            <View style={[styles.eye, { right: 10 }]} />
+                            <View style={styles.smile} />
+                        </View>
+                        <View style={styles.avatarBody} />
+                    </>
+                ) : (
+                    <Image
+                        source={sociusAvatarSource}
+                        style={styles.sociusAvatarImage}
+                    />
+                )}
+            </TouchableOpacity>
+            <View style={styles.labelContainer}>
+                <Text style={styles.avatarLabel} pointerEvents="none">{type === 'me' ? (userInfo?.name || 'Me') : 'Socius'}</Text>
+            </View>
+        </Animated.View>
+    );
+};
+
 
 const styles = StyleSheet.create({
     container: {
@@ -565,6 +623,25 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1.5,
         borderColor: '#fff',
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: -5,
+        right: -5,
+        backgroundColor: '#f44336',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#fff',
+        paddingHorizontal: 4,
+    },
+    notificationText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
     },
     atAGlance: {
         flexDirection: 'column',
@@ -775,6 +852,8 @@ const styles = StyleSheet.create({
     },
     appIconContainer: {
         position: 'absolute',
+        top: 0,
+        left: 0,
         alignItems: 'center',
         zIndex: 1000,
     },
@@ -802,6 +881,8 @@ const styles = StyleSheet.create({
     },
     avatarContainer: {
         position: 'absolute',
+        top: 0,
+        left: 0,
         alignItems: 'center',
         zIndex: 1000,
     },

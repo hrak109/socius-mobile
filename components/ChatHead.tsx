@@ -1,14 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Image, Animated, PanResponder, TouchableOpacity, Modal, Dimensions, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, Image, Animated, PanResponder, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ChatInterface from './ChatInterface';
-import { usePathname } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { AVATAR_MAP } from '../constants/avatars';
 
 const { width, height } = Dimensions.get('window');
 
 export default function ChatHead() {
-    const [modalVisible, setModalVisible] = useState(false);
+    const router = useRouter();
     const pan = useRef(new Animated.ValueXY()).current;
     const [isLoaded, setIsLoaded] = useState(false);
     const isDragging = useRef(false);
@@ -45,7 +44,7 @@ export default function ChatHead() {
             }
         };
         loadState();
-    }, [pathname]); // Reload when path changes (e.g. returning from settings)
+    }, []); // Only load once on mount, do not reload on pathname change
 
     const panResponder = useRef(
         PanResponder.create({
@@ -96,7 +95,7 @@ export default function ChatHead() {
                 }
 
                 if (!isDragging.current) {
-                    setModalVisible(true);
+                    router.push('/chat');
                 }
 
                 try {
@@ -110,6 +109,14 @@ export default function ChatHead() {
     ).current;
 
     if (!isLoaded) return null;
+
+    // Hide chat head on specific screens
+    // /home -> Has its own Socius avatar
+    // /chat -> We are already in chat
+    // /messages -> We are in messages list (optional, but cleaner)
+    if (pathname === '/home' || pathname === '/chat' || pathname === '/') {
+        return null;
+    }
 
     return (
         <>
@@ -129,29 +136,6 @@ export default function ChatHead() {
                     />
                 </View>
             </Animated.View>
-
-            <Modal
-                animationType="fade"
-                transparent={true}
-                visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.modalKeyboardContainer}
-                >
-                    <View style={styles.modalOverlay}>
-                        <TouchableOpacity
-                            style={styles.modalBackdrop}
-                            activeOpacity={1}
-                            onPress={() => setModalVisible(false)}
-                        />
-                        <View style={styles.protrudingChatContainer}>
-                            <ChatInterface onClose={() => setModalVisible(false)} isModal={true} />
-                        </View>
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
         </>
     );
 }

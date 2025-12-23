@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, Image, M
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationContext';
 import { useRouter } from 'expo-router';
 import api from '../services/api';
 
@@ -25,6 +26,8 @@ export default function FriendsScreen() {
     const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
     const [friends, setFriends] = useState<FriendItem[]>([]);
     const [requests, setRequests] = useState<FriendItem[]>([]);
+
+    const { refreshNotifications } = useNotifications();
 
     // UI state
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -90,6 +93,7 @@ export default function FriendsScreen() {
             await api.post(`/friends/accept/${id}`);
             fetchRequests();
             fetchFriends();
+            refreshNotifications();
         } catch (error) {
             console.error(error);
         }
@@ -99,6 +103,7 @@ export default function FriendsScreen() {
         try {
             await api.post(`/friends/reject/${id}`);
             fetchRequests();
+            refreshNotifications();
         } catch (error) {
             console.error(error);
         }
@@ -135,7 +140,7 @@ export default function FriendsScreen() {
                 <Text style={styles.friendName}>{item.friend_username}</Text>
             </View>
             <View style={styles.actionButtons}>
-                <TouchableOpacity style={[styles.actionBtn, styles.chatBtn]} onPress={() => router.push({ pathname: '/dm/[id]', params: { id: item.friend_id, username: item.friend_username } } as any)}>
+                <TouchableOpacity style={[styles.actionBtn, styles.chatBtn]} onPress={() => router.push({ pathname: '/messages/[id]', params: { id: item.friend_id, username: item.friend_username } } as any)}>
                     <Ionicons name="chatbubble-outline" size={20} color="#1a73e8" />
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.actionBtn, styles.deleteBtn]} onPress={() => unfriend(item.friend_id)}>

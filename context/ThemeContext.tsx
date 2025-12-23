@@ -72,6 +72,8 @@ interface ThemeContextType {
     colors: ThemeColors;
     toggleTheme: () => void;
     isDark: boolean;
+    avatarId: string;
+    setAvatar: (id: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -80,18 +82,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const systemScheme = useColorScheme();
     const [theme, setTheme] = useState<Theme>(systemScheme === 'dark' ? 'dark' : 'light');
 
+    const [avatarId, setAvatarId] = useState<string>('socius-icon');
+
     useEffect(() => {
-        const loadTheme = async () => {
+        const loadSettings = async () => {
             try {
                 const savedTheme = await AsyncStorage.getItem('app_theme');
                 if (savedTheme === 'dark' || savedTheme === 'light') {
                     setTheme(savedTheme);
                 }
+                const savedAvatar = await AsyncStorage.getItem('socius_avatar_preference');
+                if (savedAvatar) {
+                    setAvatarId(savedAvatar);
+                }
             } catch (e) {
-                console.log('Failed to load theme preference');
+                console.log('Failed to load settings');
             }
         };
-        loadTheme();
+        loadSettings();
     }, []);
 
     const toggleTheme = async () => {
@@ -104,10 +112,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const setAvatar = async (id: string) => {
+        setAvatarId(id);
+        try {
+            await AsyncStorage.setItem('socius_avatar_preference', id);
+        } catch (e) {
+            console.log('Failed to save avatar preference');
+        }
+    };
+
     const colors = theme === 'dark' ? darkColors : lightColors;
 
     return (
-        <ThemeContext.Provider value={{ theme, colors, toggleTheme, isDark: theme === 'dark' }}>
+        <ThemeContext.Provider value={{ theme, colors, toggleTheme, isDark: theme === 'dark', avatarId, setAvatar }}>
             {children}
         </ThemeContext.Provider>
     );

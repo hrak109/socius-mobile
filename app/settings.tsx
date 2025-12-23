@@ -19,31 +19,15 @@ const AVATARS = [
 export default function SettingsScreen() {
     const router = useRouter();
     const { signOut } = useSession();
-    const { theme, toggleTheme, isDark, colors } = useTheme();
-    const [selectedAvatar, setSelectedAvatar] = useState('socius-icon');
+    const { theme, toggleTheme, isDark, colors, avatarId, setAvatar } = useTheme();
+    // const [selectedAvatar, setSelectedAvatar] = useState('socius-icon'); // Removed local state
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
 
-    useEffect(() => {
-        loadSettings();
-    }, []);
+    // useEffect(() => { loadSettings(); }, []); - Removed local loadSettings
 
-    const loadSettings = async () => {
-        try {
-            const avatar = await AsyncStorage.getItem('socius_avatar_preference');
-            if (avatar) setSelectedAvatar(avatar);
-        } catch (error) {
-            console.error('Failed to load settings', error);
-        }
-    };
-
-    const handleAvatarSelect = async (avatarId: string) => {
-        setSelectedAvatar(avatarId);
-        try {
-            await AsyncStorage.setItem('socius_avatar_preference', avatarId);
-        } catch (error) {
-            console.error('Failed to save avatar preference', error);
-        }
+    const handleAvatarSelect = (id: string) => {
+        setAvatar(id); // Use context setter
     };
 
     const handleSignOut = () => {
@@ -78,19 +62,19 @@ export default function SettingsScreen() {
                                 key={avatar.id}
                                 style={[
                                     styles.avatarOption,
-                                    selectedAvatar === avatar.id && styles.selectedAvatarOption
+                                    avatarId === avatar.id && styles.selectedAvatarOption
                                 ]}
                                 onPress={() => handleAvatarSelect(avatar.id)}
                             >
                                 <Image source={avatar.source} style={styles.avatarImage} />
-                                {selectedAvatar === avatar.id && (
+                                {avatarId === avatar.id && (
                                     <View style={styles.checkMark}>
                                         <Ionicons name="checkmark-circle" size={24} color="#1a73e8" />
                                     </View>
                                 )}
                                 <Text style={[
                                     styles.avatarLabel,
-                                    selectedAvatar === avatar.id && styles.selectedAvatarLabel
+                                    avatarId === avatar.id && styles.selectedAvatarLabel
                                 ]}>{avatar.label}</Text>
                             </TouchableOpacity>
                         ))}

@@ -5,7 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../context/ThemeContext';
+import ChatInterface from '../components/ChatInterface';
 
 // Importing JSON data
 import niv from '../constants/bible/niv.json';
@@ -43,6 +45,9 @@ export default function BibleScreen() {
     const [selectedBookIndex, setSelectedBookIndex] = useState<number>(0);
     const [selectedChapterIndex, setSelectedChapterIndex] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
+    const [highlights, setHighlights] = useState<number[]>([]);
+    const [isActionModalVisible, setIsActionModalVisible] = useState(false);
 
     // UI State
     const [isVersionPickerVisible, setIsVersionPickerVisible] = useState(false);
@@ -59,7 +64,14 @@ export default function BibleScreen() {
     useEffect(() => {
         if (!isLoading) {
             saveProgress();
+            loadHighlights();
         }
+    }, [selectedVersion, selectedBookIndex, selectedChapterIndex]);
+
+    // Clear selection when changing chapters
+    useEffect(() => {
+        setSelectedVerse(null);
+        setIsActionModalVisible(false);
     }, [selectedVersion, selectedBookIndex, selectedChapterIndex]);
 
     const loadProgress = async () => {
@@ -87,6 +99,66 @@ export default function BibleScreen() {
             await AsyncStorage.setItem('bible_chapter', selectedChapterIndex.toString());
         } catch (error) {
             console.error('Failed to save bible progress', error);
+        }
+    };
+
+    const loadHighlights = async () => {
+        try {
+            const key = `highlights_${selectedVersion}_${selectedBookIndex}_${selectedChapterIndex}`;
+            const saved = await AsyncStorage.getItem(key);
+            if (saved) {
+                setHighlights(JSON.parse(saved));
+            } else {
+                setHighlights([]);
+            }
+        } catch (error) {
+            console.error('Failed to load highlights', error);
+        }
+    };
+
+    const toggleHighlight = async () => {
+        if (selectedVerse === null) return;
+
+        let newHighlights;
+        if (highlights.includes(selectedVerse)) {
+            newHighlights = highlights.filter(h => h !== selectedVerse);
+        } else {
+            newHighlights = [...highlights, selectedVerse];
+        }
+
+        setHighlights(newHighlights);
+
+        try {
+            const key = `highlights_${selectedVersion}_${selectedBookIndex}_${selectedChapterIndex}`;
+            await AsyncStorage.setItem(key, JSON.stringify(newHighlights));
+        } catch (error) {
+            console.error('Failed to save highlights', error);
+        }
+        setIsActionModalVisible(false);
+        setSelectedVerse(null);
+    };
+
+    const handleCopy = async () => {
+        if (selectedVerse === null || !currentChapter[selectedVerse]) return;
+        const text = `${currentBook?.name} ${selectedChapterIndex + 1}:${selectedVerse + 1} - ${currentChapter[selectedVerse]}`;
+        await Clipboard.setStringAsync(text);
+        setIsActionModalVisible(false);
+        setSelectedVerse(null);
+    };
+
+    const handleAskSocius = () => {
+        if (selectedVerse !== null && currentChapter[selectedVerse]) {
+            const context = `${currentBook?.name} ${selectedChapterIndex + 1}:${selectedVerse + 1} ${currentChapter[selectedVerse]}`;
+
+
+            // Close modal AFTER extracting data
+            setIsActionModalVisible(false);
+            // Use object param syntax for safety
+            router.push({ pathname: '/chat', params: { initialMessage: context } });
+             setSelectedVerse(null);
+        } else {
+            setIsActionModalVisible(false);
+            router.push('/chat');
         }
     };
 
@@ -267,10 +339,20 @@ export default function BibleScreen() {
                 <ScrollView contentContainerStyle={styles.content}>
                     <Text style={[styles.chapterTitle, { color: colors.text }]}>{currentBook?.name} {(validChapterIndex || 0) + 1}</Text>
                     {currentChapter.map((verse, idx) => (
-                        <View key={idx} style={styles.verseContainer}>
+                        <TouchableOpacity
+                            key={idx}
+                            style={[
+                                styles.verseContainer,
+                                highlights.includes(idx) && { backgroundColor: isDark ? 'rgba(255, 255, 0, 0.2)' : 'rgba(255, 255, 0, 0.3)', padding: 5, borderRadius: 5 }
+                            ]}
+                            onPress={() => {
+                                setSelectedVerse(idx);
+                                setIsActionModalVisible(true);
+                            }}
+                        >
                             <Text style={[styles.verseNumber, { color: colors.textSecondary }]}>{idx + 1}</Text>
                             <Text style={[styles.bibleText, { color: colors.text }]}>{verse || ''}</Text>
-                        </View>
+                        </TouchableOpacity>
                     ))}
                     <View style={{ height: 100 }} />
                 </ScrollView>
@@ -300,14 +382,79 @@ export default function BibleScreen() {
             )}
 
             {renderNavModal()}
+
+            {/* Action Modal */}
+            <Modal
+                transparent={true}
+                visible={isActionModalVisible}
+                onRequestClose={() => setIsActionModalVisible(false)}
+                animationType="fade"
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setIsActionModalVisible(false)}
+                >
+                    <View style={[styles.actionSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <TouchableOpacity style={styles.actionItem} onPress={handleCopy}>
+                            <Ionicons name="copy-outline" size={24} color={colors.text} />
+                            <Text style={[styles.actionText, { color: colors.text }]}>Copy</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.actionItem} onPress={toggleHighlight}>
+                            <Ionicons
+                                name={selectedVerse !== null && highlights.includes(selectedVerse) ? "color-wand" : "color-wand-outline"}
+                                size={24}
+                                color={colors.text}
+                            />
+                            <Text style={[styles.actionText, { color: colors.text }]}>
+                                {selectedVerse !== null && highlights.includes(selectedVerse) ? 'Unhighlight' : 'Highlight'}
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.actionItem} onPress={handleAskSocius}>
+                            <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />
+                            <Text style={[styles.actionText, { color: colors.primary }]}>Ask Socius</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    // ... existing ...
     container: {
         flex: 1,
     },
+    // ... add new styles
+    actionSheet: {
+        position: 'absolute',
+        bottom: 100,
+        left: 20,
+        right: 20,
+        borderRadius: 15,
+        padding: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    actionItem: {
+        alignItems: 'center',
+        gap: 5,
+    },
+    actionText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    // ... existing ...
     header: {
         flexDirection: 'row',
         alignItems: 'center',

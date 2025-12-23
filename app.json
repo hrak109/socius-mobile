@@ -21,7 +21,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.socius.mobile.android"
+      "package": "com.socius.mobile.android",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -29,6 +30,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       [
         "expo-splash-screen",
         {
