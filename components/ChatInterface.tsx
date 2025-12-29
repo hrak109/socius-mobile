@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { GiftedChat, IMessage, User, Bubble, Avatar, InputToolbar, Send } from 'react-native-gifted-chat';
+import { useFocusEffect } from 'expo-router'; // Added
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
