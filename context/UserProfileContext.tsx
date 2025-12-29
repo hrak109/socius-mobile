@@ -72,22 +72,20 @@ export const UserProfileProvider = ({ children }: { children: React.ReactNode })
         }
     };
 
-    const updateProfile = async (name: string, avatarId: string) => {
+    const updateProfile = React.useCallback(async (name: string, avatarId: string) => {
         try {
-            if (!username) throw new Error("Username missing");
-            await api.put('/users/me', {
-                username: username,
-                display_name: name,
-                custom_avatar_url: avatarId
-                // role and language should be preserved? API updates only fields present?
-                // Our API implementation: "if update.display_name is not None: user.display_name = ..."
-                // So partial updates work if we send fields, but Pydantic model requires `username`.
-                // We must ensure we don't accidentally wipe others?
-                // `custom_avatar_url` is handled by `upload_avatar` endpoint usually?
-                // Wait, `UserUpdate` has `custom_avatar_url: str | None = None`.
-                // So we can update it here.
-            });
+            // Update Backend if username exists (initialized)
+            if (username) {
+                await api.put('/users/me', {
+                    username: username,
+                    display_name: name,
+                    custom_avatar_url: avatarId
+                });
+            } else {
+                console.warn("UserProfileContext: Username missing, skipping API update in updateProfile. (This is expected during initial setup)");
+            }
 
+            // Always update local state
             await AsyncStorage.setItem('user_display_name', name);
             await AsyncStorage.setItem('user_display_avatar', avatarId);
             setDisplayName(name);
@@ -96,15 +94,18 @@ export const UserProfileProvider = ({ children }: { children: React.ReactNode })
             console.error('Failed to save user profile', error);
             throw error;
         }
-    };
+    }, [username]);
 
-    const updateSociusRole = async (role: string) => {
+    const updateSociusRole = React.useCallback(async (role: string) => {
         try {
-            if (!username) throw new Error("Username missing");
-            await api.put('/users/me', {
-                username: username,
-                socius_role: role
-            });
+            if (username) {
+                await api.put('/users/me', {
+                    username: username,
+                    socius_role: role
+                });
+            } else {
+                console.warn("UserProfileContext: Username missing, skipping API update in updateSociusRole. (Expected during setup)");
+            }
 
             await AsyncStorage.setItem('user_socius_role', role);
             setSociusRole(role);
@@ -112,10 +113,20 @@ export const UserProfileProvider = ({ children }: { children: React.ReactNode })
             console.error('Failed to save socius role', error);
             throw error;
         }
-    };
+    }, [username]);
+
+    const value = React.useMemo(() => ({
+        displayName,
+        username,
+        displayAvatar,
+        sociusRole,
+        updateProfile,
+        updateSociusRole,
+        isLoading
+    }), [displayName, username, displayAvatar, sociusRole, updateProfile, updateSociusRole, isLoading]);
 
     return (
-        <UserProfileContext.Provider value={{ displayName, username, displayAvatar, sociusRole, updateProfile, updateSociusRole, isLoading }}>
+        <UserProfileContext.Provider value={value}>
             {children}
         </UserProfileContext.Provider>
     );

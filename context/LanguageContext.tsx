@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { translations, Language, TranslationKeys } from '../constants/translations';
 
@@ -40,7 +40,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const t = (key: string): string => {
+    const t = useCallback((key: string): string => {
         const keys = key.split('.');
         let value: any = translations[language];
 
@@ -62,10 +62,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         }
 
         return typeof value === 'string' ? value : key;
-    };
+    }, [language]);
+
+    const value = React.useMemo(() => ({ language, setLanguage, t }), [language, t]);
 
     return (
-        <LanguageContext.Provider value={{ language, setLanguage, t }}>
+        <LanguageContext.Provider value={value}>
             {children}
         </LanguageContext.Provider>
     );

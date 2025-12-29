@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loadAuthData();
     }, []);
 
-    const signIn = async (token: string) => {
+    const signIn = React.useCallback(async (token: string) => {
         setSession(token);
         await saveToken(token);
         // Update user state immediately after sign in
@@ -75,9 +75,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentUser?.user) {
             setUser(currentUser.user);
         }
-    };
+    }, []);
 
-    const signOut = async () => {
+    const signOut = React.useCallback(async () => {
         setSession(null);
         setUser(null);
         await removeToken();
@@ -86,18 +86,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch (error) {
             console.error(error);
         }
-    };
+    }, []);
+
+    const value = React.useMemo(() => ({
+        session,
+        isLoading,
+        user,
+        signIn,
+        signOut,
+    }), [session, isLoading, user, signIn, signOut]);
 
     return (
-        <AuthContext.Provider
-            value={{
-                session,
-                isLoading,
-                user,
-                signIn,
-                signOut,
-            }}
-        >
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

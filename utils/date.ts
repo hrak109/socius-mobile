@@ -10,5 +10,9 @@ export const fixTimestamp = (dateString: string | null | undefined): Date => {
         fixed += 'Z';
     }
 
-    return new Date(fixed);
+    const d = new Date(fixed);
+    if (isNaN(d.getTime())) {
+        return new Date(); // Fallback to now if invalid to prevent crashes
+    }
+    return d;
 };

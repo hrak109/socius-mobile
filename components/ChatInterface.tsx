@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { GiftedChat, IMessage, User, Bubble, Avatar, InputToolbar, Send } from 'react-native-gifted-chat';
-import { useFocusEffect } from 'expo-router'; // Added
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,9 +13,6 @@ import { SOCIUS_AVATAR_MAP, PROFILE_AVATAR_MAP } from '../constants/avatars';
 import { useNotifications } from '../context/NotificationContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useUserProfile } from '../context/UserProfileContext';
-
-// Removed static BOT_USER
-
 
 const SociusAvatar = ({ source }: { source: any }) => {
     const { colors } = useTheme();
@@ -48,9 +45,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [text, setText] = useState(initialMessage);
     const [isTyping, setIsTyping] = useState(false);
-    // const [userInfo, setUserInfo] = useState<any>(null); // Replaced by useAuth
     const selectedModel = 'soc-llama3.2:3b';
-    // Removed local botAvatarSource state
     const { lastNotificationTime, refreshNotifications } = useNotifications();
     const textInputRef = useRef<any>(null);
 
@@ -66,55 +61,79 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         }
     }, [initialMessage]);
 
-    useEffect(() => {
-        // Avatar is now handled by ThemeContext
+    useFocusEffect(
+        useCallback(() => {
+            let isActive = true;
 
-        setMessages([]); // Clear messages initially
-        const fetchHistory = async () => {
-            try {
-                const res = await api.get('/history', {
-                    params: { model: selectedModel }
-                });
-                const history = res.data;
-                const formattedMessages = history.map((msg: any) => ({
-                    _id: msg.id,
-                    text: msg.content,
-                    createdAt: fixTimestamp(msg.created_at),
-                    user: msg.role === 'user' ? {
-                        _id: 1,
-                        name: displayName || user?.name || 'Me',
-                        avatar: displayAvatar ? PROFILE_AVATAR_MAP[displayAvatar] : user?.photo
-                    } : botUser,
-                }));
+            const fetchHistory = async () => {
+                try {
+                    const res = await api.get('/history', {
+                        params: { model: selectedModel }
+                    });
 
-                if (formattedMessages.length === 0) {
-                    setMessages([
-                        {
-                            _id: 1,
-                            text: `Hello! I am Socius. How can I help you today?`, // TODO: Translate this properly later, using english default for now
-                            createdAt: new Date(),
-                            user: botUser,
-                        },
-                    ]);
-                } else {
-                    setMessages(formattedMessages.reverse());
+                    if (!isActive) return;
+
+                    const history = res.data || [];
+
+                    const formattedMessages: IMessage[] = history.map((msg: any) => {
+                        // SAFEGUARDS:
+                        // 1. Force ID to string/number
+                        const safeId = msg.id || Math.random();
+
+                        // 2. Safe Timestamp
+                        let safeDate = new Date();
+                        try {
+                            safeDate = fixTimestamp(msg.created_at);
+                        } catch (e) {
+                            console.error('Date parse error', e);
+                        }
+
+                        // 3. Safe Avatar
+                        let safeAvatar = user?.photo;
+                        if (displayAvatar && PROFILE_AVATAR_MAP[displayAvatar]) {
+                            safeAvatar = PROFILE_AVATAR_MAP[displayAvatar];
+                        }
+
+                        return {
+                            _id: safeId,
+                            text: String(msg.content || ''),
+                            createdAt: safeDate,
+                            user: msg.role === 'user' ? {
+                                _id: 1,
+                                name: displayName || user?.name || 'Me',
+                                avatar: safeAvatar
+                            } : botUser,
+                        };
+                    });
+
+                    if (formattedMessages.length === 0) {
+                        setMessages(prev => {
+                            if (prev.length === 0) {
+                                return [{
+                                    _id: 1,
+                                    text: t('chat.welcome') || 'Hello! I am Socius.',
+                                    createdAt: new Date(),
+                                    user: botUser,
+                                }];
+                            }
+                            return prev;
+                        });
+                    } else {
+                        setMessages(formattedMessages.reverse());
+                    }
+                    refreshNotifications();
+                } catch (error: any) {
+                    console.error('Failed to fetch history:', error);
                 }
-                refreshNotifications(); // Refresh to clear badge since backend marks as read
-            } catch (error) {
-                console.error('Failed to fetch history:', error);
-                setMessages([
-                    {
-                        _id: 1,
-                        text: 'Hello! I am Socius. How can I help you today?',
-                        createdAt: new Date(),
-                        user: botUser,
-                    },
-                ]);
-            }
-        };
+            };
 
-        fetchHistory();
-    }, [user?.photo, lastNotificationTime]); // Reload when user changes or notification arrives
+            fetchHistory();
+
+            return () => {
+                isActive = false;
+            };
+        }, [selectedModel, displayName, user?.name, displayAvatar, user?.photo, t, lastNotificationTime])
+    );
 
     const handleSendQuestion = useCallback(async (text: string) => {
         setIsTyping(true);
@@ -123,7 +142,6 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 q_text: text,
                 model: selectedModel
             });
-            // We rely on background notification (and lastNotificationTime update) to fetch the answer
         } catch (error) {
             console.error('Error sending question:', error);
             setIsTyping(false);
@@ -135,8 +153,9 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         setMessages((previousMessages) => GiftedChat.append(previousMessages, newMessages));
         const messageText = newMessages[0].text;
         handleSendQuestion(messageText);
-        setText(''); // Clear input after sending
+        setText('');
     }, [handleSendQuestion]);
+
     useEffect(() => {
         if (messages.length > 0 && messages[0].user._id !== 1) {
             setIsTyping(false);
@@ -152,8 +171,6 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         };
         setMessages((previousMessages) => GiftedChat.append(previousMessages, [msg]));
     };
-
-
 
     const renderBubble = (props: any) => (
         <Bubble
