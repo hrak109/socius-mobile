@@ -125,8 +125,8 @@ export default function RoomScreen() {
                     ]}
                 >
                     <Image
-                        source={require('../assets/images/socius-icon.png')}
-                        style={styles.sociusAvatarImage}
+                        source={require('../assets/images/socius-avatar-0.png')}
+                    style={styles.sociusAvatarImage}
                     />
                     <View style={styles.labelContainer}>
                         <Text style={styles.avatarLabel}>Socius</Text>

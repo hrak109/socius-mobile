@@ -8,7 +8,7 @@ import { useSession } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
-import { AVATAR_MAP } from '../constants/avatars';
+import { SOCIUS_AVATAR_MAP } from '../constants/avatars';
 
 // Moved AVATARS inside component to access translations
 
@@ -23,10 +23,10 @@ export default function SettingsScreen() {
     const [soundEnabled, setSoundEnabled] = useState(true);
 
     const avatars = [
-        { id: 'socius-icon', source: AVATAR_MAP['socius-icon'], label: t('avatars.yuki') },
-        { id: 'socius-avatar-1', source: AVATAR_MAP['socius-avatar-1'], label: t('avatars.hana') },
-        { id: 'socius-avatar-2', source: AVATAR_MAP['socius-avatar-2'], label: t('avatars.haru') },
-        { id: 'socius-avatar-3', source: AVATAR_MAP['socius-avatar-3'], label: t('avatars.kai') },
+        { id: 'socius-avatar-0', source: SOCIUS_AVATAR_MAP['socius-avatar-0'], label: t('avatars.yuki') },
+        { id: 'socius-avatar-1', source: SOCIUS_AVATAR_MAP['socius-avatar-1'], label: t('avatars.hana') },
+        { id: 'socius-avatar-2', source: SOCIUS_AVATAR_MAP['socius-avatar-2'], label: t('avatars.haru') },
+        { id: 'socius-avatar-3', source: SOCIUS_AVATAR_MAP['socius-avatar-3'], label: t('avatars.kai') },
     ];
 
     // useEffect(() => { loadSettings(); }, []); - Removed local loadSettings
@@ -57,6 +57,18 @@ export default function SettingsScreen() {
             </View>
 
             <ScrollView style={styles.content}>
+                {/* Setup Wizard Access */}
+                <View style={[styles.section, { backgroundColor: colors.card, marginBottom: 20 }]}>
+                    <TouchableOpacity
+                        style={[styles.setupButton, { backgroundColor: colors.primary }]}
+                        onPress={() => router.push({ pathname: '/setup', params: { entryPoint: 'settings' } } as any)}
+                    >
+                        <Ionicons name="sparkles" size={24} color="#fff" style={{ marginRight: 10 }} />
+                        <Text style={styles.setupButtonText}>{t('setup.title')}</Text>
+                        <Ionicons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 'auto' }} />
+                    </TouchableOpacity>
+                </View>
+
                 {/* Language Section */}
                 <View style={[styles.section, { backgroundColor: colors.card }]}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.language')}</Text>
@@ -337,5 +349,16 @@ const styles = StyleSheet.create({
     },
     languageText: {
         fontWeight: '600',
+    },
+    setupButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 12,
+    },
+    setupButtonText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: 'bold',
     },
 });

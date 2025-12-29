@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Image, ActivityIndicator, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { GiftedChat, IMessage, User, Bubble, Avatar, InputToolbar, Send } from 'react-native-gifted-chat';
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -8,11 +8,10 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { fixTimestamp } from '../utils/date';
-import { AVATAR_MAP } from '../constants/avatars';
+import { SOCIUS_AVATAR_MAP, PROFILE_AVATAR_MAP } from '../constants/avatars';
 import { useNotifications } from '../context/NotificationContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useUserProfile } from '../context/UserProfileContext';
-import { USER_AVATAR_MAP } from '../constants/avatars';
 
 // Removed static BOT_USER
 
@@ -83,7 +82,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     user: msg.role === 'user' ? {
                         _id: 1,
                         name: displayName || user?.name || 'Me',
-                        avatar: displayAvatar ? USER_AVATAR_MAP[displayAvatar] : user?.photo
+                        avatar: displayAvatar ? PROFILE_AVATAR_MAP[displayAvatar] : user?.photo
                     } : botUser,
                 }));
 
@@ -99,6 +98,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 } else {
                     setMessages(formattedMessages.reverse());
                 }
+                refreshNotifications(); // Refresh to clear badge since backend marks as read
             } catch (error) {
                 console.error('Failed to fetch history:', error);
                 setMessages([
@@ -118,13 +118,11 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
     const handleSendQuestion = useCallback(async (text: string) => {
         setIsTyping(true);
         try {
-            const res = await api.post('/ask', {
+            await api.post('/ask', {
                 q_text: text,
                 model: selectedModel
             });
-
-            const { question_id } = res.data;
-            // No polling here anymore
+            // We rely on background notification (and lastNotificationTime update) to fetch the answer
         } catch (error) {
             console.error('Error sending question:', error);
             setIsTyping(false);
@@ -138,10 +136,6 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         handleSendQuestion(messageText);
         setText(''); // Clear input after sending
     }, [handleSendQuestion]);
-
-    // Removed pollAnswer logic
-
-    // Effect to clear typing when a new message arrives (triggered by fetchHistory in useEffect)
     useEffect(() => {
         if (messages.length > 0 && messages[0].user._id !== 1) {
             setIsTyping(false);
@@ -158,28 +152,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         setMessages((previousMessages) => GiftedChat.append(previousMessages, [msg]));
     };
 
-    const clearHistory = async () => {
-        try {
-            await api.post('/clear_history', { model: selectedModel });
-            setMessages([
-                {
-                    _id: Math.round(Math.random() * 1000000),
-                    text: 'Chat history cleared.',
-                    createdAt: new Date(),
-                    user: botUser,
-                    system: true
-                },
-                {
-                    _id: Math.round(Math.random() * 1000000),
-                    text: 'Hello! I am Socius. How can I help you today?',
-                    createdAt: new Date(),
-                    user: botUser,
-                }
-            ]);
-        } catch (error) {
-            console.error('Failed to clear history:', error);
-        }
-    };
+
 
     const renderBubble = (props: any) => (
         <Bubble
@@ -224,7 +197,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 />
             );
         }
-        return <SociusAvatar source={AVATAR_MAP[avatarId] || AVATAR_MAP['socius-icon']} />;
+        return <SociusAvatar source={SOCIUS_AVATAR_MAP[avatarId] || SOCIUS_AVATAR_MAP['socius-icon']} />;
     };
 
     const renderSend = (props: any) => (
@@ -268,7 +241,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     user={{
                         _id: 1,
                         name: displayName || user?.name || 'Me',
-                        avatar: displayAvatar ? USER_AVATAR_MAP[displayAvatar] : (user?.photo || undefined),
+                        avatar: displayAvatar ? PROFILE_AVATAR_MAP[displayAvatar] : (user?.photo || undefined),
                     }}
                     isTyping={isTyping}
                     locale={language}

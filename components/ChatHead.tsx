@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Image, Animated, PanResponder, Dimensions } from 'react-native';
+import { StyleSheet, View, Image, Animated, PanResponder, Dimensions, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, usePathname } from 'expo-router';
-import { AVATAR_MAP } from '../constants/avatars';
+import { SOCIUS_AVATAR_MAP } from '../constants/avatars';
 
 import { useTheme } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -15,6 +16,7 @@ export default function ChatHead() {
     const isDragging = useRef(false);
     const pathname = usePathname();
     const { avatarId } = useTheme();
+    const { sociusUnreadCount } = useNotifications();
     // Removed local avatarSource state
 
     useEffect(() => {
@@ -126,9 +128,16 @@ export default function ChatHead() {
             >
                 <View style={styles.avatarContainer}>
                     <Image
-                        source={AVATAR_MAP[avatarId] || AVATAR_MAP['socius-icon']}
+                        source={SOCIUS_AVATAR_MAP[avatarId] || SOCIUS_AVATAR_MAP['socius-icon']}
                         style={styles.avatarImage}
                     />
+                    {sociusUnreadCount > 0 && (
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>
+                                {sociusUnreadCount > 99 ? '99+' : sociusUnreadCount}
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </Animated.View>
         </>
@@ -161,6 +170,25 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 25,
+    },
+    badge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#FF3B30',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+        borderWidth: 1.5,
+        borderColor: '#fff',
+    },
+    badgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
     },
     modalKeyboardContainer: {
         flex: 1,

@@ -1,13 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Image, Text, TouchableOpacity, Animated, PanResponder, Dimensions, ScrollView, Modal, TouchableWithoutFeedback, StatusBar, Easing } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { StyleSheet, View, Image, Text, TouchableOpacity, Animated, PanResponder, Dimensions, TouchableWithoutFeedback, StatusBar, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useRouter } from 'expo-router';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { useSession } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SOCIUS_AVATAR_MAP, PROFILE_AVATAR_MAP } from '../constants/avatars';
+import { useTheme } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useUserProfile } from '../context/UserProfileContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,11 +25,7 @@ interface AppIcon {
     disabled?: boolean;
 }
 
-import { AVATAR_MAP, USER_AVATAR_MAP } from '../constants/avatars';
-import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../context/NotificationContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useUserProfile } from '../context/UserProfileContext';
+// Imports moved to top
 
 // ...
 
@@ -40,7 +39,7 @@ const APPS_CONFIG: Omit<AppIcon, 'label'>[] = [
 
 export default function HomeScreen() {
     const router = useRouter();
-    const { signOut } = useSession();
+    // const { signOut } = useSession(); // unused
     const { colors, isDark, avatarId } = useTheme();
     const { t, language } = useLanguage();
     const { displayName, displayAvatar } = useUserProfile();
@@ -73,7 +72,7 @@ export default function HomeScreen() {
         return () => clearInterval(timer);
     }, [updateDateTime]);
 
-    const [weather, setWeather] = useState({ temp: 22, condition: 'Sunny' }); // Mock weather in Celsius
+    const [weather] = useState({ temp: 22, condition: 'Sunny' }); // Mock weather in Celsius
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -84,7 +83,7 @@ export default function HomeScreen() {
     }, []);
 
     // Removed local sociusAvatarSource state and useFocusEffect loading logic
-    const sociusAvatarSource = AVATAR_MAP[avatarId] || AVATAR_MAP['socius-icon'];
+    const sociusAvatarSource = SOCIUS_AVATAR_MAP[avatarId] || SOCIUS_AVATAR_MAP['socius-avatar-0'];
 
     // Floating animation
     const floatAnim = useRef(new Animated.Value(0)).current;
@@ -123,8 +122,8 @@ export default function HomeScreen() {
                 if (currentUser?.user) {
                     setUserInfo(currentUser.user);
                 }
-            } catch (error) {
-                console.log('Failed to load user profile', error);
+            } catch { // error unused
+                console.log('Failed to load user profile');
             }
         };
         loadUserProfile();
@@ -179,7 +178,7 @@ export default function HomeScreen() {
                 </View>
                 <TouchableOpacity style={styles.profileIcon} onPress={() => router.push('/profile' as any)}>
                     {displayAvatar ? (
-                        <Image source={USER_AVATAR_MAP[displayAvatar]} style={styles.avatarImage} />
+                        <Image source={PROFILE_AVATAR_MAP[displayAvatar]} style={styles.avatarImage} />
                     ) : userInfo?.photo ? (
                         <Image source={{ uri: userInfo.photo }} style={styles.avatarImage} />
                     ) : (
@@ -330,7 +329,7 @@ const DraggableApp = ({ app, isEditMode, setIsEditMode, translateY }: {
                     pan.setValue({ x: 0, y: 0 });
                     pan.setOffset({ x: app.initialX, y: app.initialY });
                 }
-            } catch (error) {
+            } catch { // error unused
                 pan.setValue({ x: 0, y: 0 });
                 pan.setOffset({ x: app.initialX, y: app.initialY });
             }
@@ -342,7 +341,7 @@ const DraggableApp = ({ app, isEditMode, setIsEditMode, translateY }: {
             }).start();
         };
         loadPosition();
-    }, []);
+    }, [app.id, app.initialX, app.initialY, pan, opacity]); // Added dependencies
 
     const panResponder = useRef(
         PanResponder.create({
@@ -387,12 +386,12 @@ const DraggableApp = ({ app, isEditMode, setIsEditMode, translateY }: {
         }
     };
 
+    // Use notifications context for badges
+    const { unreadCount } = useNotifications();
+
     if (!isLoaded) {
         return null; // Don't render until position is loaded
     }
-
-    // Use notifications context for badges
-    const { unreadCount } = useNotifications();
 
     return (
         <Animated.View
@@ -423,7 +422,7 @@ const DraggableApp = ({ app, isEditMode, setIsEditMode, translateY }: {
                 )}
 
                 {/* Notification Badge */}
-                {!isEditMode && unreadCount > 0 && (app.id === 'friends' || app.id === 'chat') && (
+                {!isEditMode && unreadCount > 0 && app.id === 'chat' && (
                     <View style={styles.notificationBadge}>
                         <Text style={styles.notificationText}>{unreadCount}</Text>
                     </View>
@@ -451,11 +450,12 @@ const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo
     displayAvatar?: string | null
 }) => {
     const router = useRouter();
-    const { colors } = useTheme(); // Use theme here
+    // isDark unused
+    // const { isDark } = useTheme(); // Use theme here
     const { t } = useLanguage();
-    const initialPos = type === 'me'
+    const initialPos = React.useMemo(() => (type === 'me'
         ? { x: width * 0.2, y: height * 0.35 }
-        : { x: width * 0.55, y: height * 0.45 };
+        : { x: width * 0.55, y: height * 0.45 }), [type]);
     const pan = useRef(new Animated.ValueXY()).current;
     const opacity = useRef(new Animated.Value(0)).current; // Start invisible
     const isDragging = useRef(false);
@@ -480,7 +480,7 @@ const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo
                     pan.setValue({ x: 0, y: 0 });
                     pan.setOffset(initialPos);
                 }
-            } catch (error) {
+            } catch { // error unused
                 pan.setValue({ x: 0, y: 0 });
                 pan.setOffset(initialPos);
             }
@@ -492,7 +492,7 @@ const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo
             }).start();
         };
         loadPosition();
-    }, []);
+    }, [type, initialPos, pan, opacity]); // Added dependencies
 
     const panResponder = useRef(
         PanResponder.create({
@@ -540,6 +540,8 @@ const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo
         }
     };
 
+    const { sociusUnreadCount } = useNotifications();
+
     if (!isLoaded) {
         return null; // Don't render until position is loaded
     }
@@ -567,7 +569,7 @@ const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo
             >
                 {type === 'me' ? (
                     displayAvatar ? (
-                        <Image source={USER_AVATAR_MAP[displayAvatar]} style={styles.sociusAvatarImage} />
+                        <Image source={PROFILE_AVATAR_MAP[displayAvatar]} style={styles.sociusAvatarImage} />
                     ) : (
                         <>
                             <View style={styles.avatarHead}>
@@ -579,10 +581,17 @@ const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo
                         </>
                     )
                 ) : (
-                    <Image
-                        source={sociusAvatarSource}
-                        style={styles.sociusAvatarImage}
-                    />
+                    <View>
+                        <Image
+                            source={sociusAvatarSource}
+                            style={styles.sociusAvatarImage}
+                        />
+                        {!isEditMode && sociusUnreadCount > 0 && (
+                            <View style={styles.notificationBadge}>
+                                <Text style={styles.notificationText}>{sociusUnreadCount > 99 ? '99+' : sociusUnreadCount}</Text>
+                            </View>
+                        )}
+                    </View>
                 )}
             </TouchableOpacity>
             <View style={styles.labelContainer}>

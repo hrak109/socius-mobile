@@ -1,7 +1,7 @@
-import { Slot, Stack, useRouter, useSegments, usePathname } from 'expo-router';
+import { Slot, useRouter, useSegments, usePathname } from 'expo-router';
 import { useEffect } from 'react';
 import { AuthProvider, useSession } from '../context/AuthContext';
-import { View, ActivityIndicator, Alert } from 'react-native';
+import { View, ActivityIndicator, Alert, Platform } from 'react-native';
 import ChatHead from '../components/ChatHead';
 import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
@@ -10,8 +10,8 @@ import { LanguageProvider } from '../context/LanguageContext';
 import { UserProfileProvider } from '../context/UserProfileContext';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+// import Constants from 'expo-constants';
+// import { Platform } from 'react-native'; // Removed duplicate
 import api from '../services/api';
 
 // Track current path for notification logic
@@ -100,7 +100,7 @@ const InitialLayout = () => {
     const isAtRoot = pathname === '/';
     console.log('Nav State:', { session: !!session, pathname, segments });
 
-    if (!session && !isAtRoot) {
+    if (!session && !isAtRoot && !pathname.startsWith('/setup')) {
       // Redirect to the sign-in page if not logged in and trying to access protected route
       router.replace('/');
     } else if (session && isAtRoot) {
@@ -144,7 +144,7 @@ const InitialLayout = () => {
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Slot />
-      {session && <ChatHead />}
+      {session && !pathname.startsWith('/setup') && <ChatHead />}
     </>
   );
 };

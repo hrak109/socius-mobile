@@ -6,12 +6,14 @@ import * as Notifications from 'expo-notifications';
 
 interface NotificationContextType {
     unreadCount: number;
+    sociusUnreadCount: number;
     lastNotificationTime: Date | null;
     refreshNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
     unreadCount: 0,
+    sociusUnreadCount: 0,
     lastNotificationTime: null,
     refreshNotifications: async () => { },
 });
@@ -21,6 +23,7 @@ export const useNotifications = () => useContext(NotificationContext);
 export function NotificationProvider({ children }: { children: ReactNode }) {
     const { session } = useSession();
     const [unreadCount, setUnreadCount] = useState(0);
+    const [sociusUnreadCount, setSociusUnreadCount] = useState(0);
     const [lastNotificationTime, setLastNotificationTime] = useState<Date | null>(null);
 
     const refreshNotifications = async () => {
@@ -53,7 +56,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
             const res = await api.get('/notifications/unread');
             const total = res.data.total;
+            const socius = res.data.socius_unread || 0;
             setUnreadCount(total);
+            setSociusUnreadCount(socius);
             await Notifications.setBadgeCountAsync(total);
         } catch (error) {
             console.log('Failed to fetch notifications');
@@ -88,7 +93,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }, [session]);
 
     return (
-        <NotificationContext.Provider value={{ unreadCount, lastNotificationTime, refreshNotifications }}>
+        <NotificationContext.Provider value={{ unreadCount, sociusUnreadCount, lastNotificationTime, refreshNotifications }}>
             {children}
         </NotificationContext.Provider>
     );

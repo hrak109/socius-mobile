@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import api from '../services/api';
+import api, { uploadAvatar, deleteAvatar } from '../services/api';
+import * as ImagePicker from 'expo-image-picker';
 import { useSession } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useUserProfile } from '../context/UserProfileContext';
-import { AVATAR_MAP, USER_AVATARS } from '../constants/avatars';
+import { PROFILE_AVATARS } from '../constants/avatars';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 // Local definition removed
@@ -24,12 +25,15 @@ export default function ProfileScreen() {
     // Edit state
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState('');
+    const [editUsername, setEditUsername] = useState(''); // NEW
     const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
+    const [username, setUsername] = useState<string | null>(null); // NEW
 
     // Google Data
     const [googlePhoto, setGooglePhoto] = useState<string | null>(null);
     const [googleName, setGoogleName] = useState<string | null>(null);
     const [email, setEmail] = useState('');
+    const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
 
     useEffect(() => {
         loadGoogleProfile();
@@ -50,6 +54,65 @@ export default function ProfileScreen() {
         }
     };
 
+    const loadBackendProfile = async () => {
+        try {
+            const res = await api.get('/users/me');
+            if (res.data.username) {
+                setUsername(res.data.username);
+                setEditUsername(res.data.username);
+            }
+            if (res.data.custom_avatar_url) {
+                // Ensure absolute URL if needed, or handle relative
+                const url = res.data.custom_avatar_url.startsWith('http')
+                    ? res.data.custom_avatar_url
+                    : `${api.defaults.baseURL?.replace('/api/socius', '')}${res.data.custom_avatar_url}`;
+                setCustomAvatarUrl(url);
+                // If current display avatar is not set or matches previously custom logic, maybe auto-select?
+                // For now just load it.
+            }
+        } catch (error) {
+            console.log('Failed to load backend profile');
+        }
+    };
+
+    useEffect(() => {
+        loadBackendProfile();
+    }, []);
+
+    const handlePickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+        });
+
+        if (!result.canceled) {
+            try {
+                const res = await uploadAvatar(result.assets[0].uri);
+                const url = res.url.startsWith('http')
+                    ? res.url
+                    : `${api.defaults.baseURL?.replace('/api/socius', '')}${res.url}`;
+                setCustomAvatarUrl(url);
+                // Update context to use this custom avatar?
+                // Currently context uses IDs. We might need to support URLs in context.
+                // For now, let's just upload. supporting context change is a separate step.
+                Alert.alert('Success', 'Avatar uploaded');
+            } catch (error) {
+                Alert.alert('Error', 'Failed to upload image');
+            }
+        }
+    };
+
+    const handleRemoveCustomAvatar = async () => {
+        try {
+            await deleteAvatar();
+            setCustomAvatarUrl(null);
+        } catch (error) {
+            Alert.alert('Error', 'Failed to remove avatar');
+        }
+    };
+
     const handleSave = async () => {
         if (!editName.trim()) {
             Alert.alert('Error', 'Name cannot be empty');
@@ -57,11 +120,28 @@ export default function ProfileScreen() {
         }
 
         try {
+            // Update Context (Display Name & Avatar)
             await updateProfile(editName, selectedAvatar || 'user-1');
+
+            // Update Backend (Username & Role)
+            // Note: Context doesn't manage username yet, so we update backend directly here.
+            await api.put('/users/me', {
+                username: editUsername,
+                socius_role: null // Keep existing or load it? Backend handles partial updates? 
+                // Investigated socius_api.py: UserUpdate expects username. role is optional.
+                // It does NOT do partial updates for username? 
+                // Ah, backend code:
+                // class UserUpdate(BaseModel):
+                //     username: str
+                //     socius_role: str = None
+                // So we MUST send username.
+            });
+
+            setUsername(editUsername);
             setIsEditing(false);
             Alert.alert('Success', 'Profile updated');
-        } catch (error) {
-            Alert.alert('Error', 'Failed to update profile');
+        } catch (error: any) {
+            Alert.alert('Error', error.response?.data?.detail || 'Failed to update profile');
         }
     };
 
@@ -102,8 +182,8 @@ export default function ProfileScreen() {
                     <Text style={[styles.sectionHeader, { color: colors.text }]}>Public Profile</Text>
 
                     <View style={styles.avatarContainer}>
-                        {selectedAvatar && USER_AVATARS.find(a => a.id === selectedAvatar) ? (
-                            <Image source={USER_AVATARS.find(a => a.id === selectedAvatar)?.source} style={styles.avatar} />
+                        {selectedAvatar && PROFILE_AVATARS.find(a => a.id === selectedAvatar) ? (
+                            <Image source={PROFILE_AVATARS.find(a => a.id === selectedAvatar)?.source} style={styles.avatar} />
                         ) : (
                             <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
                                 <Text style={styles.avatarInitials}>{editName?.charAt(0) || googleName?.charAt(0) || 'U'}</Text>
@@ -125,9 +205,19 @@ export default function ProfileScreen() {
                                 placeholderTextColor={colors.textSecondary}
                             />
 
+                            <Text style={[styles.label, { color: colors.textSecondary, marginTop: 15 }]}>User ID (Unique)</Text>
+                            <TextInput
+                                style={[styles.input, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.primary }]}
+                                value={editUsername}
+                                onChangeText={setEditUsername}
+                                placeholder="Enter unique user ID"
+                                placeholderTextColor={colors.textSecondary}
+                                autoCapitalize="none"
+                            />
+
                             <Text style={[styles.label, { color: colors.textSecondary, marginTop: 15 }]}>Choose Avatar</Text>
                             <View style={styles.avatarGrid}>
-                                {USER_AVATARS.map((avatar) => (
+                                {PROFILE_AVATARS.map((avatar) => (
                                     <TouchableOpacity
                                         key={avatar.id}
                                         onPress={() => setSelectedAvatar(avatar.id)}
@@ -142,7 +232,7 @@ export default function ProfileScreen() {
                                 <TouchableOpacity style={[styles.actionSaveButton, { backgroundColor: colors.primary }]} onPress={handleSave}>
                                     <Text style={styles.buttonText}>Save</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[styles.actionCancelButton, { backgroundColor: colors.border }]} onPress={() => { setIsEditing(false); setEditName(displayName || googleName || ''); }}>
+                                <TouchableOpacity style={[styles.actionCancelButton, { backgroundColor: colors.border }]} onPress={() => { setIsEditing(false); setEditName(displayName || googleName || ''); setEditUsername(username || ''); }}>
                                     <Text style={styles.buttonText}>Cancel</Text>
                                 </TouchableOpacity>
                             </View>
@@ -150,6 +240,7 @@ export default function ProfileScreen() {
                     ) : (
                         <View style={{ alignItems: 'center' }}>
                             <Text style={[styles.name, { color: colors.text }]}>{displayName || googleName || 'User'}</Text>
+                            {username && <Text style={[styles.username, { color: colors.textSecondary }]}>@{username}</Text>}
                             <TouchableOpacity onPress={() => setIsEditing(true)}>
                                 <Text style={{ color: colors.primary, marginTop: 5 }}>Edit Profile</Text>
                             </TouchableOpacity>
@@ -167,7 +258,30 @@ export default function ProfileScreen() {
                             <Text style={[styles.email, { color: colors.textSecondary }]}>{email}</Text>
                         </View>
                     </View>
+
+                    {/* Custom Avatar Upload */}
+                    <Text style={[styles.sectionHeader, { color: colors.text, marginBottom: 15, marginTop: 20 }]}>Custom Photo</Text>
+                    <View style={styles.uploadRow}>
+                        {customAvatarUrl ? (
+                            <Image source={{ uri: customAvatarUrl }} style={styles.customAvatarPreview} />
+                        ) : (
+                            <View style={[styles.customAvatarPreview, { backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }]}>
+                                <Ionicons name="person" size={30} color={colors.textSecondary} />
+                            </View>
+                        )}
+                        <View style={styles.uploadButtons}>
+                            <TouchableOpacity style={[styles.uploadBtn, { backgroundColor: colors.primary }]} onPress={handlePickImage}>
+                                <Text style={styles.buttonText}>Upload Photo</Text>
+                            </TouchableOpacity>
+                            {customAvatarUrl && (
+                                <TouchableOpacity style={[styles.removeBtn, { backgroundColor: colors.danger }]} onPress={handleRemoveCustomAvatar}>
+                                    <Text style={styles.buttonText}>Remove</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </View>
                 </View>
+
 
                 <TouchableOpacity
                     style={[styles.signOutButton, { backgroundColor: colors.card, shadowColor: colors.shadow }]}
@@ -252,6 +366,10 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 5,
+    },
+    username: {
+        fontSize: 16,
+        marginBottom: 10,
     },
     email: {
         fontSize: 16,
@@ -406,5 +524,30 @@ const styles = StyleSheet.create({
     googleName: {
         fontWeight: '600',
         fontSize: 16,
+    },
+    uploadRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 15,
+    },
+    customAvatarPreview: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+    },
+    uploadButtons: {
+        flex: 1,
+        flexDirection: 'row',
+        gap: 10,
+    },
+    uploadBtn: {
+        padding: 10,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    removeBtn: {
+        padding: 10,
+        borderRadius: 8,
+        alignItems: 'center',
     },
 });

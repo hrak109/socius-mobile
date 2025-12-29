@@ -15,14 +15,17 @@ type Conversation = {
     friend_username: string;
     last_message: string;
     last_message_time: string | null;
+    unread_count?: number;
 };
 
 export default function MessagesScreen() {
     const router = useRouter();
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const { t } = useLanguage();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    // ... (fetchConversations same)
 
     const fetchConversations = async () => {
         try {
@@ -57,18 +60,32 @@ export default function MessagesScreen() {
                 </View>
             </View>
             <View style={styles.chatContent}>
-                <Text style={[styles.chatName, { color: colors.text }]}>{item.friend_username}</Text>
-                <View style={styles.messageRow}>
-                    <Text style={[styles.chatMessage, { color: colors.textSecondary }]} numberOfLines={1}>
+                <View style={styles.rowBetween}>
+                    <Text style={[styles.chatName, { color: colors.text }]}>{item.friend_username}</Text>
+                    {item.last_message_time && (
+                        <Text style={[styles.chatTime, { color: colors.textSecondary }]}>
+                            {formatDistanceToNow(fixTimestamp(item.last_message_time), { addSuffix: true })}
+                        </Text>
+                    )}
+                </View>
+                <View style={styles.rowBetween}>
+                    <Text 
+                        style={[
+                            styles.chatMessage, 
+                            { 
+                                color: (item.unread_count && item.unread_count > 0) ? (isDark ? '#fff' : '#000') : colors.textSecondary,
+                                fontWeight: (item.unread_count && item.unread_count > 0) ? 'bold' : 'normal',
+                                flex: 1, marginRight: 8
+                            }
+                        ]} 
+                        numberOfLines={1}
+                    >
                         {item.last_message}
                     </Text>
-                    {item.last_message_time && (
-                        <>
-                            <Text style={[styles.chatSeparator, { color: colors.textSecondary }]}>·</Text>
-                            <Text style={[styles.chatTime, { color: colors.textSecondary }]}>
-                                {formatDistanceToNow(fixTimestamp(item.last_message_time), { addSuffix: true })}
-                            </Text>
-                        </>
+                    {(item.unread_count || 0) > 0 && (
+                        <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
+                            <Text style={styles.unreadText}>{item.unread_count}</Text>
+                        </View>
                     )}
                 </View>
             </View>
@@ -160,19 +177,28 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 4,
     },
-    messageRow: {
+    rowBetween: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
     },
     chatMessage: {
         fontSize: 14,
-        flexShrink: 1,
-    },
-    chatSeparator: {
-        marginHorizontal: 4,
-        fontSize: 12,
     },
     chatTime: {
         fontSize: 12,
+    },
+    unreadBadge: {
+        minWidth: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+    },
+    unreadText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
     },
 });

@@ -12,6 +12,7 @@ type FriendItem = {
     id: number;
     friend_id: number;
     friend_username: string;
+    friend_avatar?: string;
     status: string;
 };
 
@@ -19,6 +20,7 @@ type UserSearchResult = {
     id: number;
     username: string;
     email: string;
+    custom_avatar_url?: string;
 };
 
 export default function FriendsScreen() {
@@ -134,10 +136,17 @@ export default function FriendsScreen() {
     };
 
     const renderFriendItem = ({ item }: { item: FriendItem }) => (
-        <View style={styles.friendCard}>
-            <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarInitials}>{item.friend_username.charAt(0).toUpperCase()}</Text>
-            </View>
+        <View style={[styles.friendCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {item.friend_avatar ? (
+                <Image
+                    source={{ uri: item.friend_avatar.startsWith('http') ? item.friend_avatar : `${api.defaults.baseURL?.replace('/api/socius', '')}${item.friend_avatar}` }}
+                    style={styles.listAvatar}
+                />
+            ) : (
+                <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarInitials}>{item.friend_username.charAt(0).toUpperCase()}</Text>
+                </View>
+            )}
             <View style={styles.friendInfo}>
                 <Text style={[styles.friendName, { color: colors.text }]}>{item.friend_username}</Text>
             </View>
@@ -154,9 +163,16 @@ export default function FriendsScreen() {
 
     const renderRequestItem = ({ item }: { item: FriendItem }) => (
         <View style={[styles.friendCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.avatarPlaceholder, { backgroundColor: colors.inputBackground }]}>
-                <Text style={[styles.avatarInitials, { color: colors.primary }]}>{item.friend_username.charAt(0).toUpperCase()}</Text>
-            </View>
+            {item.friend_avatar ? (
+                <Image
+                    source={{ uri: item.friend_avatar.startsWith('http') ? item.friend_avatar : `${api.defaults.baseURL?.replace('/api/socius', '')}${item.friend_avatar}` }}
+                    style={styles.listAvatar}
+                />
+            ) : (
+                <View style={[styles.avatarPlaceholder, { backgroundColor: colors.inputBackground }]}>
+                    <Text style={[styles.avatarInitials, { color: colors.primary }]}>{item.friend_username.charAt(0).toUpperCase()}</Text>
+                </View>
+            )}
             <View style={styles.friendInfo}>
                 <Text style={[styles.friendName, { color: colors.text }]}>{item.friend_username}</Text>
                 <Text style={[styles.usernameText, { color: colors.textSecondary }]}>{t('friends.sent_request')}</Text>
@@ -249,6 +265,12 @@ export default function FriendsScreen() {
                                 style={{ maxHeight: 200 }}
                                 renderItem={({ item }) => (
                                     <View style={[styles.searchItem, { borderBottomColor: colors.border }]}>
+                                        {item.custom_avatar_url ? (
+                                            <Image
+                                                source={{ uri: item.custom_avatar_url.startsWith('http') ? item.custom_avatar_url : `${api.defaults.baseURL?.replace('/api/socius', '')}${item.custom_avatar_url}` }}
+                                                style={[styles.listAvatar, { marginRight: 10, width: 40, height: 40, borderRadius: 20 }]}
+                                            />
+                                        ) : null}
                                         <View style={styles.searchInfo}>
                                             <Text style={[styles.friendName, { color: colors.text }]}>{item.username}</Text>
                                         </View>
@@ -351,6 +373,12 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 15,
+    },
+    listAvatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         marginRight: 15,
     },
     avatarInitials: {
