@@ -6,23 +6,28 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSession } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 import { AVATAR_MAP } from '../constants/avatars';
 
-const AVATARS = [
-    { id: 'socius-icon', source: AVATAR_MAP['socius-icon'], label: 'Classic' },
-    { id: 'socius-avatar-1', source: AVATAR_MAP['socius-avatar-1'], label: 'Bot Friend' },
-    { id: 'socius-avatar-2', source: AVATAR_MAP['socius-avatar-2'], label: 'Sparky' },
-    { id: 'socius-avatar-3', source: AVATAR_MAP['socius-avatar-3'], label: 'Geo' },
-];
+// Moved AVATARS inside component to access translations
+
 
 export default function SettingsScreen() {
     const router = useRouter();
     const { signOut } = useSession();
     const { theme, toggleTheme, isDark, colors, avatarId, setAvatar } = useTheme();
+    const { language, setLanguage, t } = useLanguage();
     // const [selectedAvatar, setSelectedAvatar] = useState('socius-icon'); // Removed local state
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
+
+    const avatars = [
+        { id: 'socius-icon', source: AVATAR_MAP['socius-icon'], label: t('avatars.yuki') },
+        { id: 'socius-avatar-1', source: AVATAR_MAP['socius-avatar-1'], label: t('avatars.hana') },
+        { id: 'socius-avatar-2', source: AVATAR_MAP['socius-avatar-2'], label: t('avatars.haru') },
+        { id: 'socius-avatar-3', source: AVATAR_MAP['socius-avatar-3'], label: t('avatars.kai') },
+    ];
 
     // useEffect(() => { loadSettings(); }, []); - Removed local loadSettings
 
@@ -47,17 +52,48 @@ export default function SettingsScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+                <Text style={[styles.title, { color: colors.text }]}>{t('settings.title')}</Text>
                 <View style={{ width: 40 }} />
             </View>
 
             <ScrollView style={styles.content}>
+                {/* Language Section */}
+                <View style={[styles.section, { backgroundColor: colors.card }]}>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.language')}</Text>
+                    <View style={styles.languageContainer}>
+                        <TouchableOpacity
+                            style={[
+                                styles.languageButton,
+                                language === 'en' && { backgroundColor: colors.primary }
+                            ]}
+                            onPress={() => setLanguage('en')}
+                        >
+                            <Text style={[
+                                styles.languageText,
+                                language === 'en' ? { color: '#fff' } : { color: colors.text }
+                            ]}>English</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                styles.languageButton,
+                                language === 'ko' && { backgroundColor: colors.primary }
+                            ]}
+                            onPress={() => setLanguage('ko')}
+                        >
+                            <Text style={[
+                                styles.languageText,
+                                language === 'ko' ? { color: '#fff' } : { color: colors.text }
+                            ]}>한국어</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
                 {/* Socius Appearance Section */}
                 <View style={[styles.section, { backgroundColor: colors.card, shadowColor: isDark ? '#000' : '#000' }]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Socius Appearance</Text>
-                    <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Choose your companion's look</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.appearance')}</Text>
+                    <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('settings.appearance_subtitle')}</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.avatarList}>
-                        {AVATARS.map((avatar) => (
+                        {avatars.map((avatar) => (
                             <TouchableOpacity
                                 key={avatar.id}
                                 style={[
@@ -83,11 +119,11 @@ export default function SettingsScreen() {
 
                 {/* General Settings */}
                 <View style={[styles.section, { backgroundColor: colors.card }]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>General</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.general')}</Text>
                     <View style={[styles.optionRow, { borderBottomColor: colors.border }]}>
                         <View style={styles.optionInfo}>
                             <Ionicons name="moon-outline" size={22} color={colors.textSecondary} />
-                            <Text style={[styles.optionText, { color: colors.text }]}>Dark Mode</Text>
+                            <Text style={[styles.optionText, { color: colors.text }]}>{t('settings.dark_mode')}</Text>
                         </View>
                         <Switch
                             value={isDark}
@@ -99,7 +135,7 @@ export default function SettingsScreen() {
                     <View style={[styles.optionRow, { borderBottomColor: colors.border }]}>
                         <View style={styles.optionInfo}>
                             <Ionicons name="notifications-outline" size={22} color={colors.textSecondary} />
-                            <Text style={[styles.optionText, { color: colors.text }]}>Notifications</Text>
+                            <Text style={[styles.optionText, { color: colors.text }]}>{t('settings.notifications')}</Text>
                         </View>
                         <Switch
                             value={notificationsEnabled}
@@ -111,7 +147,7 @@ export default function SettingsScreen() {
                     <View style={[styles.optionRow, { borderBottomColor: colors.border }]}>
                         <View style={styles.optionInfo}>
                             <Ionicons name="volume-medium-outline" size={22} color={colors.textSecondary} />
-                            <Text style={[styles.optionText, { color: colors.text }]}>Sound Effects</Text>
+                            <Text style={[styles.optionText, { color: colors.text }]}>{t('settings.sound_effects')}</Text>
                         </View>
                         <Switch
                             value={soundEnabled}
@@ -124,21 +160,21 @@ export default function SettingsScreen() {
 
                 {/* About & Support */}
                 <View style={[styles.section, { backgroundColor: colors.card }]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>About & Support</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.about')}</Text>
                     <TouchableOpacity style={[styles.linkRow, { borderBottomColor: colors.border }]}>
-                        <Text style={[styles.linkText, { color: colors.text }]}>Privacy Policy</Text>
+                        <Text style={[styles.linkText, { color: colors.text }]}>{t('settings.privacy_policy')}</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.linkRow, { borderBottomColor: colors.border }]}>
-                        <Text style={[styles.linkText, { color: colors.text }]}>Terms of Service</Text>
+                        <Text style={[styles.linkText, { color: colors.text }]}>{t('settings.terms_of_service')}</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.linkRow, { borderBottomColor: colors.border }]}>
-                        <Text style={[styles.linkText, { color: colors.text }]}>Help & Feedback</Text>
+                        <Text style={[styles.linkText, { color: colors.text }]}>{t('settings.help_feedback')}</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
                     </TouchableOpacity>
                     <View style={styles.linkRow}>
-                        <Text style={[styles.linkText, { color: colors.text }]}>Version</Text>
+                        <Text style={[styles.linkText, { color: colors.text }]}>{t('settings.version')}</Text>
                         <Text style={[styles.versionText, { color: colors.textSecondary }]}>1.0.0 (Beta)</Text>
                     </View>
                 </View>
@@ -146,7 +182,7 @@ export default function SettingsScreen() {
                 {/* Account Action */}
                 <View style={[styles.section, { backgroundColor: colors.card }]}>
                     <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-                        <Text style={styles.signOutText}>Sign Out</Text>
+                        <Text style={styles.signOutText}>{t('settings.sign_out')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -284,6 +320,22 @@ const styles = StyleSheet.create({
     signOutText: {
         color: '#d93025',
         fontSize: 16,
+        fontWeight: '600',
+    },
+    languageContainer: {
+        flexDirection: 'row',
+        gap: 10,
+        marginTop: 10,
+    },
+    languageButton: {
+        flex: 1,
+        padding: 10,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        alignItems: 'center',
+    },
+    languageText: {
         fontWeight: '600',
     },
 });

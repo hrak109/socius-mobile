@@ -85,7 +85,7 @@ export default function LoginScreen() {
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>Socius</Text>
-                <Text style={styles.subtitle}>Secure AI by Hee</Text>
+                <Text style={styles.subtitle}>Your AI Socius by Hee</Text>
             </View>
 
             <TouchableOpacity

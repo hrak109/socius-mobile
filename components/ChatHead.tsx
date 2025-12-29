@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, usePathname } from 'expo-router';
 import { AVATAR_MAP } from '../constants/avatars';
 
+import { useTheme } from '../context/ThemeContext';
+
 const { width, height } = Dimensions.get('window');
 
 export default function ChatHead() {
@@ -12,7 +14,8 @@ export default function ChatHead() {
     const [isLoaded, setIsLoaded] = useState(false);
     const isDragging = useRef(false);
     const pathname = usePathname();
-    const [avatarSource, setAvatarSource] = useState(AVATAR_MAP['socius-icon']);
+    const { avatarId } = useTheme();
+    // Removed local avatarSource state
 
     useEffect(() => {
         const loadState = async () => {
@@ -33,15 +36,7 @@ export default function ChatHead() {
             }
             setIsLoaded(true);
 
-            // Load Avatar
-            try {
-                const savedAvatar = await AsyncStorage.getItem('socius_avatar_preference');
-                if (savedAvatar && AVATAR_MAP[savedAvatar]) {
-                    setAvatarSource(AVATAR_MAP[savedAvatar]);
-                }
-            } catch (e) {
-                console.log('Failed to load avatar');
-            }
+            // Avatar loading removed, handled by ThemeContext
         };
         loadState();
     }, []); // Only load once on mount, do not reload on pathname change
@@ -131,7 +126,7 @@ export default function ChatHead() {
             >
                 <View style={styles.avatarContainer}>
                     <Image
-                        source={avatarSource}
+                        source={AVATAR_MAP[avatarId] || AVATAR_MAP['socius-icon']}
                         style={styles.avatarImage}
                     />
                 </View>

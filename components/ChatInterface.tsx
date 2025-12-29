@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Image, ActivityIndicator, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
-import { GiftedChat, IMessage, User, Bubble, Avatar, InputToolbar } from 'react-native-gifted-chat';
+import { GiftedChat, IMessage, User, Bubble, Avatar, InputToolbar, Send } from 'react-native-gifted-chat';
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,11 +10,12 @@ import api from '../services/api';
 import { fixTimestamp } from '../utils/date';
 import { AVATAR_MAP } from '../constants/avatars';
 import { useNotifications } from '../context/NotificationContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useUserProfile } from '../context/UserProfileContext';
+import { USER_AVATAR_MAP } from '../constants/avatars';
 
-const BOT_USER: User = {
-    _id: 2,
-    name: 'Socius',
-};
+// Removed static BOT_USER
+
 
 const SociusAvatar = ({ source }: { source: any }) => {
     const { colors } = useTheme();
@@ -35,36 +36,38 @@ interface ChatInterfaceProps {
 }
 
 export default function ChatInterface({ onClose, isModal = false, initialMessage = '' }: ChatInterfaceProps) {
-    const { colors } = useTheme();
+    const { colors, avatarId } = useTheme();
+    const { t, language } = useLanguage();
+    const { displayName, displayAvatar } = useUserProfile();
+
+    const botUser: User = {
+        _id: 2,
+        name: t('chat.socius'),
+    };
     const { user } = useAuth(); // Use AuthContext for user info if available
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [text, setText] = useState(initialMessage);
     const [isTyping, setIsTyping] = useState(false);
     // const [userInfo, setUserInfo] = useState<any>(null); // Replaced by useAuth
     const selectedModel = 'soc-llama3.2:3b';
-    const [botAvatarSource, setBotAvatarSource] = useState(AVATAR_MAP['socius-icon']);
+    // Removed local botAvatarSource state
     const { lastNotificationTime, refreshNotifications } = useNotifications();
     const textInputRef = useRef<any>(null);
 
     useEffect(() => {
-        if (initialMessage && text !== initialMessage) {
+        if (initialMessage) {
             setText(initialMessage);
+            // Delay focus to ensure layout is ready
+            setTimeout(() => {
+                if (textInputRef.current) {
+                    textInputRef.current.focus();
+                }
+            }, 600);
         }
     }, [initialMessage]);
 
     useEffect(() => {
-        // Load avatar preference
-        const loadAvatar = async () => {
-            try {
-                const savedAvatar = await AsyncStorage.getItem('socius_avatar_preference');
-                if (savedAvatar && AVATAR_MAP[savedAvatar]) {
-                    setBotAvatarSource(AVATAR_MAP[savedAvatar]);
-                }
-            } catch (e) {
-                console.log('Failed to load avatar');
-            }
-        };
-        loadAvatar();
+        // Avatar is now handled by ThemeContext
 
         setMessages([]); // Clear messages initially
         const fetchHistory = async () => {
@@ -79,18 +82,18 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     createdAt: fixTimestamp(msg.created_at),
                     user: msg.role === 'user' ? {
                         _id: 1,
-                        name: user?.name || 'Me',
-                        avatar: user?.photo
-                    } : BOT_USER,
+                        name: displayName || user?.name || 'Me',
+                        avatar: displayAvatar ? USER_AVATAR_MAP[displayAvatar] : user?.photo
+                    } : botUser,
                 }));
 
                 if (formattedMessages.length === 0) {
                     setMessages([
                         {
                             _id: 1,
-                            text: `Hello! I am Socius. How can I help you today?`,
+                            text: `Hello! I am Socius. How can I help you today?`, // TODO: Translate this properly later, using english default for now
                             createdAt: new Date(),
-                            user: BOT_USER,
+                            user: botUser,
                         },
                     ]);
                 } else {
@@ -103,7 +106,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                         _id: 1,
                         text: 'Hello! I am Socius. How can I help you today?',
                         createdAt: new Date(),
-                        user: BOT_USER,
+                        user: botUser,
                     },
                 ]);
             }
@@ -150,7 +153,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
             _id: Math.round(Math.random() * 1000000),
             text,
             createdAt: new Date(),
-            user: BOT_USER,
+            user: botUser,
         };
         setMessages((previousMessages) => GiftedChat.append(previousMessages, [msg]));
     };
@@ -163,14 +166,14 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     _id: Math.round(Math.random() * 1000000),
                     text: 'Chat history cleared.',
                     createdAt: new Date(),
-                    user: BOT_USER,
+                    user: botUser,
                     system: true
                 },
                 {
                     _id: Math.round(Math.random() * 1000000),
                     text: 'Hello! I am Socius. How can I help you today?',
                     createdAt: new Date(),
-                    user: BOT_USER,
+                    user: botUser,
                 }
             ]);
         } catch (error) {
@@ -221,8 +224,16 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 />
             );
         }
-        return <SociusAvatar source={botAvatarSource} />;
+        return <SociusAvatar source={AVATAR_MAP[avatarId] || AVATAR_MAP['socius-icon']} />;
     };
+
+    const renderSend = (props: any) => (
+        <Send
+            {...props}
+            label={t('chat.send')}
+            textStyle={{ color: colors.primary }}
+        />
+    );
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -238,7 +249,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 ) : (
                     <View style={{ width: 40 }} />
                 )}
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Socius Chat</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('chat.title')}</Text>
                 <View style={{ width: 40 }} />
             </View>
 
@@ -256,13 +267,16 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     onSend={(messages) => onSend(messages)}
                     user={{
                         _id: 1,
-                        name: user?.name || 'Me',
-                        avatar: user?.photo || undefined,
+                        name: displayName || user?.name || 'Me',
+                        avatar: displayAvatar ? USER_AVATAR_MAP[displayAvatar] : (user?.photo || undefined),
                     }}
                     isTyping={isTyping}
+                    locale={language}
                     renderBubble={renderBubble}
                     renderAvatar={renderAvatar}
                     renderInputToolbar={renderInputToolbar}
+                    renderSend={renderSend}
+                    placeholder={t('chat.placeholder')}
                     showUserAvatar={true}
                     alwaysShowSend
                     isScrollToBottomEnabled
@@ -270,6 +284,10 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     timeTextStyle={{
                         left: { color: colors.textSecondary },
                         right: { color: 'rgba(255, 255, 255, 0.7)' }
+                    }}
+                    textInputProps={{
+                        contextMenuHidden: false,
+                        keyboardType: 'default',
                     }}
                 />
             </KeyboardAvoidingView>

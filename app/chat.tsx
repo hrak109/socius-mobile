@@ -9,12 +9,17 @@ export default function ChatScreen() {
     const router = useRouter();
     const { colors } = useTheme();
 
-    const { initialMessage } = useLocalSearchParams<{ initialMessage: string }>();
-    console.log('ChatScreen params:', { initialMessage });
+    const params = useLocalSearchParams();
+    const initialMessage = Array.isArray(params.initialMessage)
+        ? params.initialMessage[0]
+        : params.initialMessage || '';
+
+    console.log('ChatScreen params normalized:', { initialMessage });
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ChatInterface
+                key={initialMessage} // Force re-mount to ensure text state initializes correctly
                 onClose={() => router.back()}
                 initialMessage={initialMessage}
             />

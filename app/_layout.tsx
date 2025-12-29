@@ -6,6 +6,8 @@ import ChatHead from '../components/ChatHead';
 import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { NotificationProvider } from '../context/NotificationContext';
+import { LanguageProvider } from '../context/LanguageContext';
+import { UserProfileProvider } from '../context/UserProfileContext';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
@@ -152,7 +154,11 @@ export default function RootLayout() {
     <AuthProvider>
       <ThemeProvider>
         <NotificationProvider>
-          <InitialLayout />
+          <LanguageProvider>
+            <UserProfileProvider>
+              <InitialLayout />
+            </UserProfileProvider>
+          </LanguageProvider>
         </NotificationProvider>
       </ThemeProvider>
     </AuthProvider>

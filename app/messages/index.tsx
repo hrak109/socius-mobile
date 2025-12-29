@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fixTimestamp } from '../../utils/date';
 import { useTheme } from '../../context/ThemeContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 type Conversation = {
     friend_id: number;
@@ -19,6 +20,7 @@ type Conversation = {
 export default function MessagesScreen() {
     const router = useRouter();
     const { colors } = useTheme();
+    const { t } = useLanguage();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -81,7 +83,7 @@ export default function MessagesScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 16 }}>
                         <Ionicons name="arrow-back" size={28} color={colors.text} />
                     </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>Messages</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>{t('messages.title')}</Text>
                 </View>
                 <TouchableOpacity onPress={() => router.push('/friends' as any)}>
                     <Ionicons name="create-outline" size={28} color={colors.text} />
@@ -101,8 +103,8 @@ export default function MessagesScreen() {
                     contentContainerStyle={styles.chatList}
                     ListEmptyComponent={
                         <View style={{ alignItems: 'center', marginTop: 50 }}>
-                            <Text style={{ color: colors.textSecondary, fontSize: 16 }}>No messages yet.</Text>
-                            <Text style={{ color: colors.disabled, fontSize: 14 }}>Start a chat from your Friends list.</Text>
+                            <Text style={{ color: colors.textSecondary, fontSize: 16 }}>{t('messages.no_messages')}</Text>
+                            <Text style={{ color: colors.disabled, fontSize: 14 }}>{t('messages.start_chat')}</Text>
                         </View>
                     }
                 />

@@ -22,30 +22,58 @@ interface AppIcon {
     disabled?: boolean;
 }
 
-import { AVATAR_MAP } from '../constants/avatars';
+import { AVATAR_MAP, USER_AVATAR_MAP } from '../constants/avatars';
 import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useUserProfile } from '../context/UserProfileContext';
 
 // ...
 
-const APPS: AppIcon[] = [
-    { id: 'chat', label: 'Messages', iconName: 'chatbubbles', color: '#1a73e8', route: '/messages', initialX: width * 0.15, initialY: height * 0.25 },
-    { id: 'diary', label: 'Diary', iconName: 'book', color: '#34a853', route: '/diary', initialX: width * 0.65, initialY: height * 0.35 },
-    { id: 'bible', label: 'Bible', iconName: 'library', color: '#fbbc04', route: '/bible', initialX: width * 0.4, initialY: height * 0.55 },
-    { id: 'friends', label: 'Friends', iconName: 'people', color: '#e91e63', route: '/friends', initialX: width * 0.15, initialY: height * 0.65 },
-    { id: 'settings', label: 'Settings', iconName: 'settings', color: '#607d8b', route: '/settings', initialX: width * 0.75, initialY: height * 0.75 },
+const APPS_CONFIG: Omit<AppIcon, 'label'>[] = [
+    { id: 'chat', iconName: 'chatbubbles', color: '#1a73e8', route: '/messages', initialX: width * 0.15, initialY: height * 0.25 },
+    { id: 'diary', iconName: 'book', color: '#34a853', route: '/diary', initialX: width * 0.65, initialY: height * 0.35 },
+    { id: 'bible', iconName: 'library', color: '#fbbc04', route: '/bible', initialX: width * 0.4, initialY: height * 0.55 },
+    { id: 'friends', iconName: 'people', color: '#e91e63', route: '/friends', initialX: width * 0.15, initialY: height * 0.65 },
+    { id: 'settings', iconName: 'settings', color: '#607d8b', route: '/settings', initialX: width * 0.75, initialY: height * 0.75 },
 ];
 
 export default function HomeScreen() {
     const router = useRouter();
     const { signOut } = useSession();
     const { colors, isDark, avatarId } = useTheme();
+    const { t, language } = useLanguage();
+    const { displayName, displayAvatar } = useUserProfile();
     const [userInfo, setUserInfo] = useState<any>(null);
     const [isEditMode, setIsEditMode] = useState(false);
-    const date = new Date();
-    const dateString = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-    const [timeString, setTimeString] = useState(date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
-    const [weather, setWeather] = useState({ temp: 72, condition: 'Sunny' }); // Mock weather
+
+    // Date and Time Logic
+    const [dateString, setDateString] = useState('');
+    const [timeString, setTimeString] = useState('');
+
+    const updateDateTime = useCallback(() => {
+        const now = new Date();
+        const locale = language === 'ko' ? 'ko-KR' : 'en-US';
+
+        setDateString(now.toLocaleDateString(locale, {
+            weekday: 'long',
+            month: language === 'ko' ? 'long' : 'short',
+            day: 'numeric'
+        }));
+
+        setTimeString(now.toLocaleTimeString(locale, {
+            hour: 'numeric',
+            minute: '2-digit'
+        }));
+    }, [language]);
+
+    useEffect(() => {
+        updateDateTime();
+        const timer = setInterval(updateDateTime, 60000); // Update every minute
+        return () => clearInterval(timer);
+    }, [updateDateTime]);
+
+    const [weather, setWeather] = useState({ temp: 22, condition: 'Sunny' }); // Mock weather in Celsius
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -140,20 +168,23 @@ export default function HomeScreen() {
             <View style={styles.header}>
                 <BlurView intensity={isDark ? 50 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
                 <View style={styles.atAGlance}>
+                    <Text style={[styles.dayText, { color: colors.textSecondary, marginBottom: 2 }]}>{t('home.at_a_glance')}</Text>
                     <Text style={[styles.dateText, { color: colors.text }]}>{dateString}</Text>
                     <View style={styles.weatherContainer}>
                         <Text style={[styles.weatherText, { color: colors.textSecondary }]}>{timeString}</Text>
                         <Text style={[styles.weatherSeparator, { color: colors.textSecondary }]}> | </Text>
                         <Ionicons name="partly-sunny" size={16} color={colors.textSecondary} style={{ marginRight: 4 }} />
-                        <Text style={[styles.weatherText, { color: colors.textSecondary }]}>{weather.temp}°F {weather.condition}</Text>
+                        <Text style={[styles.weatherText, { color: colors.textSecondary }]}>{weather.temp}°C {t(`home.weather.${weather.condition.toLowerCase()}`)}</Text>
                     </View>
                 </View>
                 <TouchableOpacity style={styles.profileIcon} onPress={() => router.push('/profile' as any)}>
-                    {userInfo?.photo ? (
+                    {displayAvatar ? (
+                        <Image source={USER_AVATAR_MAP[displayAvatar]} style={styles.avatarImage} />
+                    ) : userInfo?.photo ? (
                         <Image source={{ uri: userInfo.photo }} style={styles.avatarImage} />
                     ) : (
                         <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>{userInfo?.name?.charAt(0) || 'H'}</Text>
+                            <Text style={styles.avatarText}>{displayName?.charAt(0) || userInfo?.name?.charAt(0) || 'H'}</Text>
                         </View>
                     )}
                 </TouchableOpacity>
@@ -239,6 +270,8 @@ export default function HomeScreen() {
                         setIsEditMode={setIsEditMode}
                         translateY={translateY}
                         userInfo={userInfo}
+                        displayName={displayName}
+                        displayAvatar={displayAvatar}
                     />
                     <DraggableAvatar
                         type="socius"
@@ -249,10 +282,10 @@ export default function HomeScreen() {
                     />
 
                     {/* Draggable App Icons */}
-                    {APPS.map(app => (
+                    {APPS_CONFIG.map(config => (
                         <DraggableApp
-                            key={app.id}
-                            app={app}
+                            key={config.id}
+                            app={{ ...config, label: t(`home.apps.${config.id}`) }}
                             isEditMode={isEditMode}
                             setIsEditMode={setIsEditMode}
                             translateY={translateY}
@@ -277,7 +310,7 @@ const DraggableApp = ({ app, isEditMode, setIsEditMode, translateY }: {
     const opacity = useRef(new Animated.Value(0)).current; // Start invisible
     const [isLoaded, setIsLoaded] = useState(false);
     const isDragging = useRef(false);
-    
+
     // Fix stale closure in PanResponder
     const currentEditMode = useRef(isEditMode);
     useEffect(() => {
@@ -407,16 +440,19 @@ const DraggableApp = ({ app, isEditMode, setIsEditMode, translateY }: {
     );
 };
 
-const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo, sociusAvatarSource }: {
+const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo, sociusAvatarSource, displayName, displayAvatar }: {
     type: 'me' | 'socius',
     isEditMode: boolean,
     setIsEditMode: (val: boolean) => void,
     translateY: Animated.AnimatedInterpolation<string | number>,
     userInfo?: any,
-    sociusAvatarSource?: any
+    sociusAvatarSource?: any,
+    displayName?: string | null,
+    displayAvatar?: string | null
 }) => {
     const router = useRouter();
     const { colors } = useTheme(); // Use theme here
+    const { t } = useLanguage();
     const initialPos = type === 'me'
         ? { x: width * 0.2, y: height * 0.35 }
         : { x: width * 0.55, y: height * 0.45 };
@@ -530,14 +566,18 @@ const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo
                 style={{ alignItems: 'center' }}
             >
                 {type === 'me' ? (
-                    <>
-                        <View style={styles.avatarHead}>
-                            <View style={styles.eye} />
-                            <View style={[styles.eye, { right: 10 }]} />
-                            <View style={styles.smile} />
-                        </View>
-                        <View style={styles.avatarBody} />
-                    </>
+                    displayAvatar ? (
+                        <Image source={USER_AVATAR_MAP[displayAvatar]} style={styles.sociusAvatarImage} />
+                    ) : (
+                        <>
+                            <View style={styles.avatarHead}>
+                                <View style={styles.eye} />
+                                <View style={[styles.eye, { right: 10 }]} />
+                                <View style={styles.smile} />
+                            </View>
+                            <View style={styles.avatarBody} />
+                        </>
+                    )
                 ) : (
                     <Image
                         source={sociusAvatarSource}
@@ -546,7 +586,7 @@ const DraggableAvatar = ({ type, isEditMode, setIsEditMode, translateY, userInfo
                 )}
             </TouchableOpacity>
             <View style={styles.labelContainer}>
-                <Text style={styles.avatarLabel} pointerEvents="none">{type === 'me' ? (userInfo?.name || 'Me') : 'Socius'}</Text>
+                <Text style={styles.avatarLabel} pointerEvents="none">{type === 'me' ? (displayName || userInfo?.name || t('chat.me')) : t('chat.socius')}</Text>
             </View>
         </Animated.View>
     );

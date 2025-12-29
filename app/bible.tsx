@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Modal, FlatList, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Modal, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,6 +7,7 @@ import { BlurView } from 'expo-blur';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import ChatInterface from '../components/ChatInterface';
 
 // Importing JSON data
@@ -39,6 +40,7 @@ const VERSIONS = [
 export default function BibleScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
+    const { t } = useLanguage();
 
     // State
     const [selectedVersion, setSelectedVersion] = useState('개역개정');
@@ -144,18 +146,20 @@ export default function BibleScreen() {
         await Clipboard.setStringAsync(text);
         setIsActionModalVisible(false);
         setSelectedVerse(null);
+        Alert.alert(t('common.success'), t('bible.copy_success') || 'Copied to clipboard');
     };
 
-    const handleAskSocius = () => {
+    const handleAskSocius = async () => {
         if (selectedVerse !== null && currentChapter[selectedVerse]) {
-            const context = `${currentBook?.name} ${selectedChapterIndex + 1}:${selectedVerse + 1} ${currentChapter[selectedVerse]}`;
+            const context = `${currentBook?.name} ${selectedChapterIndex + 1}:${selectedVerse + 1} - ${currentChapter[selectedVerse]}`;
 
+            await Clipboard.setStringAsync(context);
 
             // Close modal AFTER extracting data
             setIsActionModalVisible(false);
             // Use object param syntax for safety
             router.push({ pathname: '/chat', params: { initialMessage: context } });
-             setSelectedVerse(null);
+            setSelectedVerse(null);
         } else {
             setIsActionModalVisible(false);
             router.push('/chat');
@@ -226,10 +230,10 @@ export default function BibleScreen() {
                     <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
                         <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
                             <TouchableOpacity onPress={() => setNavMode('book')}>
-                                <Text style={[styles.modalTab, { color: colors.textSecondary }, navMode === 'book' && { color: colors.primary, fontWeight: 'bold' }]}>Books</Text>
+                                <Text style={[styles.modalTab, { color: colors.textSecondary }, navMode === 'book' && { color: colors.primary, fontWeight: 'bold' }]}>{t('bible.books')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => setNavMode('chapter')}>
-                                <Text style={[styles.modalTab, { color: colors.textSecondary }, navMode === 'chapter' && { color: colors.primary, fontWeight: 'bold' }]}>Chapters</Text>
+                                <Text style={[styles.modalTab, { color: colors.textSecondary }, navMode === 'chapter' && { color: colors.primary, fontWeight: 'bold' }]}>{t('bible.chapters')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => setIsNavVisible(false)} style={styles.closeBtn}>
                                 <Ionicons name="close" size={24} color={colors.text} />
@@ -280,8 +284,8 @@ export default function BibleScreen() {
                             ) : (
                                 <View style={styles.emptyStateContainer}>
                                     <Ionicons name="book-outline" size={48} color={colors.disabled} />
-                                    <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>No chapters available</Text>
-                                    <Text style={[styles.emptyStateSubtext, { color: colors.disabled }]}>Please select a book first</Text>
+                                    <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>{t('bible.no_chapters')}</Text>
+                                    <Text style={[styles.emptyStateSubtext, { color: colors.disabled }]}>{t('bible.select_book_first')}</Text>
                                 </View>
                             )
                         )}
@@ -309,7 +313,7 @@ export default function BibleScreen() {
                     style={[styles.navSelector, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}
                     onPress={() => { setNavMode('book'); setIsNavVisible(true); }}
                 >
-                    <Text style={[styles.navText, { color: colors.text }]}>{currentBook?.name || 'Select Book'} {(validChapterIndex || 0) + 1} <Ionicons name="chevron-down" size={14} /></Text>
+                    <Text style={[styles.navText, { color: colors.text }]}>{currentBook?.name || t('bible.select_book')} {(validChapterIndex || 0) + 1} <Ionicons name="chevron-down" size={14} /></Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.versionSelector} onPress={() => setIsVersionPickerVisible(!isVersionPickerVisible)}>
                     <Text style={[styles.versionText, { color: colors.primary }]}>{selectedVersion} <Ionicons name="options" size={14} /></Text>
@@ -358,24 +362,24 @@ export default function BibleScreen() {
                 </ScrollView>
             ) : (
                 <View style={styles.content}>
-                    <Text style={{ textAlign: 'center', marginTop: 50, color: colors.textSecondary }}>Loading Bible...</Text>
+                    <Text style={{ textAlign: 'center', marginTop: 50, color: colors.textSecondary }}>{t('bible.loading')}</Text>
                 </View>
             )}
 
             {/* Floating Navigation Controls (Retained Feature) */}
             {hasValidData && (
                 <View style={styles.floatingNavContainer}>
-                    <BlurView intensity={isDark ? 50 : 80} tint={isDark ? "dark" : "light"} style={styles.blurContainer}>
+                    <BlurView intensity={80} tint={isDark ? "light" : "dark"} style={styles.blurContainer}>
                         <TouchableOpacity onPress={handlePrevChapter} style={styles.navButton}>
-                            <Ionicons name="chevron-back" size={24} color={colors.text} />
+                            <Ionicons name="chevron-back" size={20} color={isDark ? '#000' : '#fff'} />
                         </TouchableOpacity>
 
                         <TouchableOpacity onPress={() => setIsNavVisible(true)}>
-                            <Text style={[styles.chapterIndicator, { color: colors.text }]}>Ch {selectedChapterIndex + 1}</Text>
+                            <Text style={[styles.chapterIndicator, { color: isDark ? '#000' : '#fff' }]}>Ch {selectedChapterIndex + 1}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity onPress={handleNextChapter} style={styles.navButton}>
-                            <Ionicons name="chevron-forward" size={24} color={colors.text} />
+                            <Ionicons name="chevron-forward" size={20} color={isDark ? '#000' : '#fff'} />
                         </TouchableOpacity>
                     </BlurView>
                 </View>
@@ -398,7 +402,7 @@ export default function BibleScreen() {
                     <View style={[styles.actionSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
                         <TouchableOpacity style={styles.actionItem} onPress={handleCopy}>
                             <Ionicons name="copy-outline" size={24} color={colors.text} />
-                            <Text style={[styles.actionText, { color: colors.text }]}>Copy</Text>
+                            <Text style={[styles.actionText, { color: colors.text }]}>{t('bible.copy')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.actionItem} onPress={toggleHighlight}>
                             <Ionicons
@@ -407,12 +411,12 @@ export default function BibleScreen() {
                                 color={colors.text}
                             />
                             <Text style={[styles.actionText, { color: colors.text }]}>
-                                {selectedVerse !== null && highlights.includes(selectedVerse) ? 'Unhighlight' : 'Highlight'}
+                                {selectedVerse !== null && highlights.includes(selectedVerse) ? t('bible.unhighlight') : t('bible.highlight')}
                             </Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.actionItem} onPress={handleAskSocius}>
                             <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />
-                            <Text style={[styles.actionText, { color: colors.primary }]}>Ask Socius</Text>
+                            <Text style={[styles.actionText, { color: colors.primary }]}>{t('bible.ask_socius')}</Text>
                         </TouchableOpacity>
                     </View>
                 </TouchableOpacity>
@@ -587,19 +591,19 @@ const styles = StyleSheet.create({
     blurContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 30,
+        paddingVertical: 6,
+        paddingHorizontal: 16,
+        borderRadius: 25,
         overflow: 'hidden',
-        minWidth: 200,
+        minWidth: 140,
         justifyContent: 'space-between',
     },
     navButton: {
-        padding: 10,
+        padding: 6,
     },
     chapterIndicator: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
-        marginHorizontal: 10,
+        marginHorizontal: 8,
     },
 });

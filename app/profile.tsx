@@ -6,91 +6,73 @@ import { useRouter } from 'expo-router';
 import api from '../services/api';
 import { useSession } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useUserProfile } from '../context/UserProfileContext';
+import { AVATAR_MAP, USER_AVATARS } from '../constants/avatars';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+
+// Local definition removed
+
 
 export default function ProfileScreen() {
     const router = useRouter();
     const { signOut } = useSession();
     const { colors } = useTheme();
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-
-    // User data
-    const [userId, setUserId] = useState<number | null>(null);
-    const [username, setUsername] = useState('');
-    const [email, setEmail] = useState('');
-    const [googlePhoto, setGooglePhoto] = useState<string | null>(null);
-    const [googleName, setGoogleName] = useState<string | null>(null);
+    const { t } = useLanguage();
+    const { displayName, displayAvatar, updateProfile } = useUserProfile();
 
     // Edit state
     const [isEditing, setIsEditing] = useState(false);
-    const [newUsername, setNewUsername] = useState('');
+    const [editName, setEditName] = useState('');
+    const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
+
+    // Google Data
+    const [googlePhoto, setGooglePhoto] = useState<string | null>(null);
+    const [googleName, setGoogleName] = useState<string | null>(null);
+    const [email, setEmail] = useState('');
 
     useEffect(() => {
-        loadUserProfile();
-    }, []);
+        loadGoogleProfile();
+        if (displayName) setEditName(displayName);
+        if (displayAvatar) setSelectedAvatar(displayAvatar);
+    }, [displayName, displayAvatar]);
 
-    const loadUserProfile = async () => {
+    const loadGoogleProfile = async () => {
         try {
-            // Get Backend Profile
-            const response = await api.get('/users/me');
-            setUserId(response.data.id);
-            setUsername(response.data.username);
-            setEmail(response.data.email);
-            setNewUsername(response.data.username);
-
-            // Get Google Profile for Photo/Name
-            try {
-                const currentUser = await GoogleSignin.getCurrentUser();
-                if (currentUser?.user) {
-                    setGooglePhoto(currentUser.user.photo);
-                    setGoogleName(currentUser.user.name);
-                }
-            } catch (gError) {
-                console.log("Google user fetch error", gError);
+            const currentUser = await GoogleSignin.getCurrentUser();
+            if (currentUser?.user) {
+                setGooglePhoto(currentUser.user.photo);
+                setGoogleName(currentUser.user.name);
+                setEmail(currentUser.user.email);
             }
-
         } catch (error) {
-            console.error('Failed to load profile:', error);
-            Alert.alert('Error', 'Failed to load profile data.');
-        } finally {
-            setLoading(false);
+            console.error('Failed to load google profile', error);
         }
     };
 
     const handleSave = async () => {
-        if (!newUsername.trim()) {
-            Alert.alert('Error', 'Username cannot be empty');
-            return;
-        }
-        if (newUsername === username) {
-            setIsEditing(false);
+        if (!editName.trim()) {
+            Alert.alert('Error', 'Name cannot be empty');
             return;
         }
 
-        setSaving(true);
         try {
-            const response = await api.put('/users/me', { username: newUsername });
-            setUsername(response.data.username);
+            await updateProfile(editName, selectedAvatar || 'user-1');
             setIsEditing(false);
-            Alert.alert('Success', 'Profile updated successfully');
-        } catch (error: any) {
-            console.error('Update failed:', error);
-            const msg = error.response?.data?.detail || 'Failed to update profile';
-            Alert.alert('Error', msg);
-        } finally {
-            setSaving(false);
+            Alert.alert('Success', 'Profile updated');
+        } catch (error) {
+            Alert.alert('Error', 'Failed to update profile');
         }
     };
 
     const handleSignOut = async () => {
         Alert.alert(
-            "Sign Out",
-            "Are you sure you want to sign out?",
+            t('settings.sign_out'),
+            t('settings.sign_out_confirm_message'),
             [
-                { text: "Cancel", style: "cancel" },
+                { text: t('common.cancel'), style: "cancel" },
                 {
-                    text: "Sign Out",
+                    text: t('settings.sign_out'),
                     style: "destructive",
                     onPress: async () => {
                         await signOut();
@@ -101,15 +83,8 @@ export default function ProfileScreen() {
         );
     };
 
-    if (loading) {
-        return (
-            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                </View>
-            </SafeAreaView>
-        );
-    }
+    // Removed loading state for now as we load local data mostly
+
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -117,79 +92,81 @@ export default function ProfileScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('profile.title')}</Text>
                 <View style={{ width: 40 }} />
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+                    {/* Editable Socius Profile Section */}
+                    <Text style={[styles.sectionHeader, { color: colors.text }]}>Public Profile</Text>
+
                     <View style={styles.avatarContainer}>
-                        {googlePhoto ? (
-                            <Image source={{ uri: googlePhoto }} style={styles.avatar} />
+                        {selectedAvatar && USER_AVATARS.find(a => a.id === selectedAvatar) ? (
+                            <Image source={USER_AVATARS.find(a => a.id === selectedAvatar)?.source} style={styles.avatar} />
                         ) : (
                             <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
-                                <Text style={styles.avatarInitials}>{googleName?.charAt(0) || 'U'}</Text>
+                                <Text style={styles.avatarInitials}>{editName?.charAt(0) || googleName?.charAt(0) || 'U'}</Text>
                             </View>
                         )}
-                        <TouchableOpacity style={[styles.cameraButtonDisabled, { borderColor: colors.card }]} activeOpacity={1}>
-                            {/* Placeholder for future photo upload feature */}
+                        <TouchableOpacity style={[styles.editAvatarBtn, { backgroundColor: colors.primary }]} onPress={() => setIsEditing(!isEditing)}>
+                            <Ionicons name="pencil" size={16} color="#fff" />
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={[styles.name, { color: colors.text }]}>{googleName || 'User'}</Text>
-                    <Text style={[styles.email, { color: colors.textSecondary }]}>{email}</Text>
+                    {isEditing ? (
+                        <View style={styles.editContainer}>
+                            <Text style={[styles.label, { color: colors.textSecondary }]}>Display Name</Text>
+                            <TextInput
+                                style={[styles.input, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.primary }]}
+                                value={editName}
+                                onChangeText={setEditName}
+                                placeholder="Enter display name"
+                                placeholderTextColor={colors.textSecondary}
+                            />
 
-                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                            <Text style={[styles.label, { color: colors.textSecondary, marginTop: 15 }]}>Choose Avatar</Text>
+                            <View style={styles.avatarGrid}>
+                                {USER_AVATARS.map((avatar) => (
+                                    <TouchableOpacity
+                                        key={avatar.id}
+                                        onPress={() => setSelectedAvatar(avatar.id)}
+                                        style={[styles.avatarOption, selectedAvatar === avatar.id && { borderColor: colors.primary, borderWidth: 2 }]}
+                                    >
+                                        <Image source={avatar.source} style={styles.avatarOptionImg} />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
 
-                    <View style={styles.section}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>Username</Text>
-                        {isEditing ? (
-                            <View style={styles.editRow}>
-                                <TextInput
-                                    style={[styles.input, {
-                                        color: colors.text,
-                                        backgroundColor: colors.inputBackground,
-                                        borderColor: colors.primary
-                                    }]}
-                                    value={newUsername}
-                                    onChangeText={setNewUsername}
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                    placeholder="Enter username"
-                                    placeholderTextColor={colors.textSecondary}
-                                />
-                                <TouchableOpacity
-                                    style={[styles.saveButton, { backgroundColor: colors.primary }]}
-                                    onPress={handleSave}
-                                    disabled={saving}
-                                >
-                                    {saving ? (
-                                        <ActivityIndicator color="#fff" size="small" />
-                                    ) : (
-                                        <Ionicons name="checkmark" size={24} color="#fff" />
-                                    )}
+                            <View style={styles.buttonRow}>
+                                <TouchableOpacity style={[styles.actionSaveButton, { backgroundColor: colors.primary }]} onPress={handleSave}>
+                                    <Text style={styles.buttonText}>Save</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.cancelButton, { backgroundColor: colors.border }]}
-                                    onPress={() => {
-                                        setIsEditing(false);
-                                        setNewUsername(username);
-                                    }}
-                                    disabled={saving}
-                                >
-                                    <Ionicons name="close" size={24} color={colors.text} />
+                                <TouchableOpacity style={[styles.actionCancelButton, { backgroundColor: colors.border }]} onPress={() => { setIsEditing(false); setEditName(displayName || googleName || ''); }}>
+                                    <Text style={styles.buttonText}>Cancel</Text>
                                 </TouchableOpacity>
                             </View>
-                        ) : (
-                            <View style={[styles.infoRow, { backgroundColor: colors.inputBackground }]}>
-                                <Text style={[styles.infoText, { color: colors.text }]}>@{username}</Text>
-                                <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editIcon}>
-                                    <Ionicons name="pencil" size={20} color={colors.primary} />
-                                </TouchableOpacity>
-                            </View>
-                        )}
+                        </View>
+                    ) : (
+                        <View style={{ alignItems: 'center' }}>
+                            <Text style={[styles.name, { color: colors.text }]}>{displayName || googleName || 'User'}</Text>
+                            <TouchableOpacity onPress={() => setIsEditing(true)}>
+                                <Text style={{ color: colors.primary, marginTop: 5 }}>Edit Profile</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    <View style={[styles.divider, { backgroundColor: colors.border, marginVertical: 20 }]} />
+
+                    {/* Read-Only Google Info */}
+                    <Text style={[styles.sectionHeader, { color: colors.text, marginBottom: 15 }]}>Google Account</Text>
+                    <View style={styles.googleInfoRow}>
+                        {googlePhoto && <Image source={{ uri: googlePhoto }} style={styles.googleAvatar} />}
+                        <View>
+                            <Text style={[styles.googleName, { color: colors.text }]}>{googleName}</Text>
+                            <Text style={[styles.email, { color: colors.textSecondary }]}>{email}</Text>
+                        </View>
                     </View>
-
                 </View>
 
                 <TouchableOpacity
@@ -197,7 +174,7 @@ export default function ProfileScreen() {
                     onPress={handleSignOut}
                 >
                     <Ionicons name="log-out-outline" size={24} color={colors.danger} style={{ marginRight: 10 }} />
-                    <Text style={[styles.signOutText, { color: colors.danger }]}>Sign Out</Text>
+                    <Text style={[styles.signOutText, { color: colors.danger }]}>{t('settings.sign_out')}</Text>
                 </TouchableOpacity>
 
             </ScrollView>
@@ -352,5 +329,82 @@ const styles = StyleSheet.create({
     signOutText: {
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    sectionHeader: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        alignSelf: 'flex-start',
+        marginBottom: 10,
+    },
+    editAvatarBtn: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    editContainer: {
+        width: '100%',
+    },
+    avatarGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+        justifyContent: 'center',
+        marginVertical: 10,
+    },
+    avatarOption: {
+        padding: 2,
+        borderRadius: 25,
+    },
+    avatarOptionImg: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 15,
+        gap: 10,
+    },
+    buttonText: {
+        color: '#fff',
+        fontWeight: '600',
+    },
+    actionSaveButton: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    actionCancelButton: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    googleInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        padding: 10,
+        borderRadius: 10,
+    },
+    googleAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        marginRight: 10,
+    },
+    googleName: {
+        fontWeight: '600',
+        fontSize: 16,
     },
 });

@@ -7,6 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import api from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
 
 type DiaryEntry = {
     id: string; // Changed to string based on renderEntry usage
@@ -19,6 +20,7 @@ type DiaryEntry = {
 export default function DiaryScreen() {
     const router = useRouter();
     const { colors } = useTheme();
+    const { t, language } = useLanguage();
     const [entries, setEntries] = useState<DiaryEntry[]>([]); // Kept as empty array, INITIAL_ENTRIES not provided
     const [newEntry, setNewEntry] = useState(''); // This state is no longer used for adding
     const [isAdding, setIsAdding] = useState(false); // This state is no longer used for adding
@@ -100,14 +102,18 @@ export default function DiaryScreen() {
 
         return (
             <View style={[styles.entryCard, { backgroundColor: colors.card, shadowColor: '#000' }]}>
-                <View style={styles.cardHeader}>
-                    <View style={[styles.dateBadge, { backgroundColor: colors.inputBackground }]}>
-                        <Text style={[styles.dateDay, { color: colors.primary }]}>{format(fixTimestamp(item.date), 'dd')}</Text>
-                        <Text style={[styles.dateMonth, { color: colors.textSecondary }]}>{format(fixTimestamp(item.date), 'MMM')}</Text>
+                <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
+                    <View style={[styles.dateBadge, { backgroundColor: colors.primary }]}>
+                        <Text style={[styles.dateDay, { color: '#fff' }]}>
+                            {new Date(item.date).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { day: 'numeric' })}
+                        </Text>
+                        <Text style={[styles.dateMonth, { color: 'rgba(255,255,255,0.9)' }]}>
+                            {new Date(item.date).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short' })}
+                        </Text>
                     </View>
                     {!isEditing && (
                         <TouchableOpacity onPress={() => startEditing(item)} style={styles.editIcon}>
-                            <Ionicons name="pencil" size={16} color={colors.textSecondary} />
+                            <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -127,7 +133,7 @@ export default function DiaryScreen() {
                                 onPress={cancelEditing}
                                 disabled={isSavingEdit}
                             >
-                                <Text style={[styles.editBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+                                <Text style={[styles.editBtnText, { color: colors.textSecondary }]}>{t('diary.cancel')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.editBtn, styles.saveEditBtn, { backgroundColor: colors.primary }]}
@@ -137,7 +143,7 @@ export default function DiaryScreen() {
                                 {isSavingEdit ? (
                                     <ActivityIndicator size="small" color="#fff" />
                                 ) : (
-                                    <Text style={styles.editBtnText}>Save</Text>
+                                    <Text style={styles.editBtnText}>{t('diary.save')}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
@@ -148,7 +154,9 @@ export default function DiaryScreen() {
                         <Text style={[styles.entryPreview, { color: colors.textSecondary }]} numberOfLines={item.title ? 2 : 4}>
                             {item.content}
                         </Text>
-                        <Text style={[styles.entryTime, { color: colors.textSecondary }]}>{format(fixTimestamp(item.date), 'h:mm a')}</Text>
+                        <Text style={[styles.entryTime, { color: colors.textSecondary }]}>
+                            {new Date(item.date).toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', { hour: 'numeric', minute: '2-digit' })}
+                        </Text>
                     </View>
                 )}
             </View>
@@ -161,7 +169,7 @@ export default function DiaryScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>My Diary</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('diary.title')}</Text>
                 <View style={{ width: 40 }} />
             </View>
 
@@ -180,7 +188,7 @@ export default function DiaryScreen() {
                         ListEmptyComponent={
                             <View style={styles.emptyState}>
                                 <Ionicons name="book-outline" size={60} color={colors.textSecondary} />
-                                <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>No entries yet. Start writing!</Text>
+                                <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>{t('diary.no_entries')}</Text>
                             </View>
                         }
                     />
@@ -203,7 +211,7 @@ export default function DiaryScreen() {
                 <View style={styles.modalContainer}>
                     <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
                         <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>New Entry</Text>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('diary.new_entry')}</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
                                 <Ionicons name="close" size={24} color={colors.text} />
                             </TouchableOpacity>
@@ -211,7 +219,7 @@ export default function DiaryScreen() {
 
                         <TextInput
                             style={[styles.inputTitle, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-                            placeholder="Title (optional)"
+                            placeholder={t('diary.title_placeholder')}
                             placeholderTextColor={colors.textSecondary}
                             value={newTitle}
                             onChangeText={setNewTitle}
@@ -219,7 +227,7 @@ export default function DiaryScreen() {
 
                         <TextInput
                             style={[styles.inputContent, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-                            placeholder="Dear Diary..."
+                            placeholder={t('diary.content_placeholder')}
                             placeholderTextColor={colors.textSecondary}
                             multiline
                             textAlignVertical="top"
@@ -231,7 +239,7 @@ export default function DiaryScreen() {
                             style={[styles.saveButton, { backgroundColor: colors.primary }]}
                             onPress={handleSaveEntry}
                         >
-                            <Text style={styles.saveButtonText}>Save Entry</Text>
+                            <Text style={styles.saveButtonText}>{t('diary.save_entry')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -267,23 +275,22 @@ const styles = StyleSheet.create({
         paddingBottom: 100, // Space for FAB
     },
     entryCard: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
+        borderRadius: 20,
         padding: 20,
-        marginBottom: 20,
+        marginBottom: 15,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 3,
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 4,
         borderWidth: 1,
-        borderColor: '#f0f0f0',
+        borderColor: 'rgba(0,0,0,0.05)',
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
+        alignItems: 'flex-start',
+        marginBottom: 15,
     },
     entryDate: {
         fontSize: 14,

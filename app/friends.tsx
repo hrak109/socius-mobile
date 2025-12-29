@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useRouter } from 'expo-router';
 import api from '../services/api';
 
@@ -23,6 +24,7 @@ type UserSearchResult = {
 export default function FriendsScreen() {
     const router = useRouter();
     const { colors } = useTheme();
+    const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
     const [friends, setFriends] = useState<FriendItem[]>([]);
     const [requests, setRequests] = useState<FriendItem[]>([]);
@@ -79,12 +81,12 @@ export default function FriendsScreen() {
     const sendRequest = async (username: string) => {
         try {
             await api.post('/friends/request', { username });
-            Alert.alert('Success', `Friend request sent to ${username}`);
+            Alert.alert(t('common.success'), `Friend request sent to ${username}`);
             setSearchQuery('');
             setSearchResults([]);
             setIsAddModalVisible(false);
         } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.detail || 'Failed to send request');
+            Alert.alert(t('common.error'), error.response?.data?.detail || 'Failed to send request');
         }
     };
 
@@ -111,12 +113,12 @@ export default function FriendsScreen() {
 
     const unfriend = async (friendId: number) => {
         Alert.alert(
-            'Unfriend',
-            'Are you sure you want to remove this friend? Chat history will be deleted.',
+            t('friends.unfriend_title'),
+            t('friends.unfriend_message'),
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Remove',
+                    text: t('friends.remove'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -137,7 +139,7 @@ export default function FriendsScreen() {
                 <Text style={styles.avatarInitials}>{item.friend_username.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={styles.friendInfo}>
-                <Text style={styles.friendName}>{item.friend_username}</Text>
+                <Text style={[styles.friendName, { color: colors.text }]}>{item.friend_username}</Text>
             </View>
             <View style={styles.actionButtons}>
                 <TouchableOpacity style={[styles.actionBtn, styles.chatBtn]} onPress={() => router.push({ pathname: '/messages/[id]', params: { id: item.friend_id, username: item.friend_username } } as any)}>
@@ -151,19 +153,19 @@ export default function FriendsScreen() {
     );
 
     const renderRequestItem = ({ item }: { item: FriendItem }) => (
-        <View style={styles.friendCard}>
-            <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarInitials}>{item.friend_username.charAt(0).toUpperCase()}</Text>
+        <View style={[styles.friendCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.avatarPlaceholder, { backgroundColor: colors.inputBackground }]}>
+                <Text style={[styles.avatarInitials, { color: colors.primary }]}>{item.friend_username.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={styles.friendInfo}>
-                <Text style={styles.friendName}>{item.friend_username}</Text>
-                <Text style={styles.usernameText}>Sent you a request</Text>
+                <Text style={[styles.friendName, { color: colors.text }]}>{item.friend_username}</Text>
+                <Text style={[styles.usernameText, { color: colors.textSecondary }]}>{t('friends.sent_request')}</Text>
             </View>
             <View style={styles.actionButtons}>
                 <TouchableOpacity style={[styles.actionBtn, styles.acceptBtn]} onPress={() => acceptRequest(item.id)}>
                     <Ionicons name="checkmark" size={20} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, styles.rejectBtn]} onPress={() => rejectRequest(item.id)}>
+                <TouchableOpacity style={[styles.actionBtn, styles.rejectBtn, { borderColor: colors.border, backgroundColor: colors.background }]} onPress={() => rejectRequest(item.id)}>
                     <Ionicons name="close" size={20} color="#dc3545" />
                 </TouchableOpacity>
             </View>
@@ -176,7 +178,7 @@ export default function FriendsScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Friends</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('friends.title')}</Text>
                 <TouchableOpacity onPress={() => setIsAddModalVisible(true)}>
                     <Ionicons name="person-add" size={24} color={colors.primary} />
                 </TouchableOpacity>
@@ -188,14 +190,14 @@ export default function FriendsScreen() {
                         style={[styles.tabButton, activeTab === 'friends' && { backgroundColor: colors.primary, shadowColor: colors.shadow }]}
                         onPress={() => setActiveTab('friends')}
                     >
-                        <Text style={[styles.tabText, { color: colors.text }, activeTab === 'friends' && { color: colors.buttonText }]}>My Friends</Text>
+                        <Text style={[styles.tabText, { color: colors.text }, activeTab === 'friends' && { color: colors.buttonText }]}>{t('friends.my_friends')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.tabButton, activeTab === 'requests' && { backgroundColor: colors.primary, shadowColor: colors.shadow }]}
                         onPress={() => setActiveTab('requests')}
                     >
                         <Text style={[styles.tabText, { color: colors.text }, activeTab === 'requests' && { color: colors.buttonText }]}>
-                            Requests {requests.length > 0 && <Text style={{ color: activeTab === 'requests' ? colors.buttonText : colors.error }}>({requests.length})</Text>}
+                            {t('friends.requests')} {requests.length > 0 && <Text style={{ color: activeTab === 'requests' ? colors.buttonText : colors.error }}>({requests.length})</Text>}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -209,7 +211,7 @@ export default function FriendsScreen() {
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                            {activeTab === 'friends' ? "No friends yet." : "No pending requests."}
+                            {activeTab === 'friends' ? t('friends.no_friends') : t('friends.no_requests')}
                         </Text>
                     </View>
                 }
@@ -224,14 +226,14 @@ export default function FriendsScreen() {
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
                         <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>Add Friend</Text>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('friends.add_friend')}</Text>
                             <TouchableOpacity onPress={() => setIsAddModalVisible(false)}>
                                 <Ionicons name="close" size={24} color={colors.text} />
                             </TouchableOpacity>
                         </View>
                         <TextInput
                             style={[styles.modalInput, { backgroundColor: colors.inputBackground, color: colors.text }]}
-                            placeholder="Search by username..."
+                            placeholder={t('friends.search_placeholder')}
                             placeholderTextColor={colors.textSecondary}
                             value={searchQuery}
                             onChangeText={handleSearchUsers}
@@ -254,7 +256,7 @@ export default function FriendsScreen() {
                                             style={[styles.addButton, { backgroundColor: colors.primary }]}
                                             onPress={() => sendRequest(item.username)}
                                         >
-                                            <Text style={[styles.addButtonText, { color: colors.buttonText }]}>Add</Text>
+                                            <Text style={[styles.addButtonText, { color: colors.buttonText }]}>{t('friends.add')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}
@@ -263,7 +265,7 @@ export default function FriendsScreen() {
 
                         <View style={styles.modalButtons}>
                             <TouchableOpacity onPress={() => setIsAddModalVisible(false)} style={[styles.closeButton, { backgroundColor: colors.inputBackground }]}>
-                                <Text style={[styles.closeButtonText, { color: colors.text }]}>Close</Text>
+                                <Text style={[styles.closeButtonText, { color: colors.text }]}>{t('friends.close')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -284,7 +286,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 20,
         paddingVertical: 15,
-        backgroundColor: '#fff',
     },
     backButton: {
         padding: 5,
@@ -295,11 +296,10 @@ const styles = StyleSheet.create({
         color: '#1a1a1a',
     },
     tabContainer: {
-        backgroundColor: '#fff',
         paddingVertical: 10,
         paddingHorizontal: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: '#f0f0f0', // Can be refined later in JS if needed
     },
     tabPillContainer: {
         flexDirection: 'row',
@@ -323,7 +323,6 @@ const styles = StyleSheet.create({
     },
     tabText: {
         fontSize: 14,
-        color: '#666',
         fontWeight: '600',
     },
     activeTabText: {
@@ -336,7 +335,6 @@ const styles = StyleSheet.create({
     friendCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
         padding: 15,
         borderRadius: 16,
         marginBottom: 12,
@@ -346,13 +344,11 @@ const styles = StyleSheet.create({
         shadowRadius: 5,
         elevation: 2,
         borderWidth: 1,
-        borderColor: '#f0f0f0',
     },
     avatarPlaceholder: {
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#e3f2fd',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 15,
@@ -360,7 +356,6 @@ const styles = StyleSheet.create({
     avatarInitials: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#1976d2',
     },
     friendInfo: {
         flex: 1,
@@ -368,11 +363,9 @@ const styles = StyleSheet.create({
     friendName: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
     },
     usernameText: {
         fontSize: 13,
-        color: '#888',
         marginTop: 2,
     },
     actionButtons: {
