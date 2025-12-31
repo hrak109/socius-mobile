@@ -7,6 +7,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useRouter } from 'expo-router';
 import api from '../services/api';
+import { PROFILE_AVATAR_MAP } from '../constants/avatars';
 
 type FriendItem = {
     id: number;
@@ -38,6 +39,13 @@ export default function FriendsScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+
+    const getAvatarSource = (avatar: string | undefined | null) => {
+        if (!avatar) return null;
+        if (PROFILE_AVATAR_MAP[avatar]) return PROFILE_AVATAR_MAP[avatar];
+        if (avatar.startsWith('http')) return { uri: avatar };
+        return { uri: `${api.defaults.baseURL?.replace('/api/socius', '')}${avatar}` };
+    };
 
     const fetchFriends = async () => {
         try {
@@ -137,9 +145,9 @@ export default function FriendsScreen() {
 
     const renderFriendItem = ({ item }: { item: FriendItem }) => (
         <View style={[styles.friendCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {item.friend_avatar ? (
+            {item.friend_avatar && getAvatarSource(item.friend_avatar) ? (
                 <Image
-                    source={{ uri: item.friend_avatar.startsWith('http') ? item.friend_avatar : `${api.defaults.baseURL?.replace('/api/socius', '')}${item.friend_avatar}` }}
+                    source={getAvatarSource(item.friend_avatar)}
                     style={styles.listAvatar}
                 />
             ) : (
@@ -163,9 +171,9 @@ export default function FriendsScreen() {
 
     const renderRequestItem = ({ item }: { item: FriendItem }) => (
         <View style={[styles.friendCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {item.friend_avatar ? (
+            {item.friend_avatar && getAvatarSource(item.friend_avatar) ? (
                 <Image
-                    source={{ uri: item.friend_avatar.startsWith('http') ? item.friend_avatar : `${api.defaults.baseURL?.replace('/api/socius', '')}${item.friend_avatar}` }}
+                    source={getAvatarSource(item.friend_avatar)}
                     style={styles.listAvatar}
                 />
             ) : (
@@ -265,9 +273,9 @@ export default function FriendsScreen() {
                                 style={{ maxHeight: 200 }}
                                 renderItem={({ item }) => (
                                     <View style={[styles.searchItem, { borderBottomColor: colors.border }]}>
-                                        {item.custom_avatar_url ? (
+                                        {item.custom_avatar_url && getAvatarSource(item.custom_avatar_url) ? (
                                             <Image
-                                                source={{ uri: item.custom_avatar_url.startsWith('http') ? item.custom_avatar_url : `${api.defaults.baseURL?.replace('/api/socius', '')}${item.custom_avatar_url}` }}
+                                                source={getAvatarSource(item.custom_avatar_url)}
                                                 style={[styles.listAvatar, { marginRight: 10, width: 40, height: 40, borderRadius: 20 }]}
                                             />
                                         ) : null}

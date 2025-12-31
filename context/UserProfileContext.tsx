@@ -38,32 +38,40 @@ export const UserProfileProvider = ({ children }: { children: React.ReactNode })
 
     const loadProfile = async () => {
         try {
-            // Fetch from API for source of truth
+            // 1. Load from cache immediately
+            const name = await AsyncStorage.getItem('user_display_name');
+            const savedUsername = await AsyncStorage.getItem('user_username');
+            const avatar = await AsyncStorage.getItem('user_display_avatar');
+            const role = await AsyncStorage.getItem('user_socius_role');
+
+            if (name) setDisplayName(name);
+            if (savedUsername) setUsername(savedUsername);
+            if (avatar) setDisplayAvatar(avatar);
+            if (role) setSociusRole(role);
+
+            // If we have data, we can stop loading visually
+            if (name || savedUsername) {
+                setIsLoading(false);
+            }
+
+            // 2. Fetch from API to update/sync in background
             try {
                 const res = await api.get('/users/me');
                 const data = res.data;
+
+                // Update state with fresh data
                 setDisplayName(data.display_name || data.username);
                 setUsername(data.username);
                 setDisplayAvatar(data.custom_avatar_url || 'user-1');
                 setSociusRole(data.socius_role);
 
-                // Sync to storage
+                // Sync new data to storage
                 await AsyncStorage.setItem('user_display_name', data.display_name || data.username || '');
-                if (data.username) await AsyncStorage.setItem('user_username', data.username); // Store username
+                if (data.username) await AsyncStorage.setItem('user_username', data.username);
                 if (data.custom_avatar_url) await AsyncStorage.setItem('user_display_avatar', data.custom_avatar_url);
                 if (data.socius_role) await AsyncStorage.setItem('user_socius_role', data.socius_role);
             } catch (apiError) {
-                // Fallback to offline storage if API fails
-                console.log('API load failed, using cache');
-                const name = await AsyncStorage.getItem('user_display_name');
-                const savedUsername = await AsyncStorage.getItem('user_username');
-                const avatar = await AsyncStorage.getItem('user_display_avatar');
-                const role = await AsyncStorage.getItem('user_socius_role');
-
-                if (name) setDisplayName(name);
-                if (savedUsername) setUsername(savedUsername);
-                if (avatar) setDisplayAvatar(avatar);
-                if (role) setSociusRole(role);
+                console.log('API load failed, using cached data');
             }
         } catch (error) {
             console.error('Failed to load user profile', error);

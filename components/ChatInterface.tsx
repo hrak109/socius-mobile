@@ -201,6 +201,11 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
 
     const renderAvatar = (props: any) => {
         if (props.currentMessage?.user?._id === 1) {
+            let avatarSource = user?.photo;
+            if (displayAvatar && PROFILE_AVATAR_MAP[displayAvatar]) {
+                avatarSource = PROFILE_AVATAR_MAP[displayAvatar];
+            }
+
             return (
                 <Avatar
                     {...props}
@@ -208,7 +213,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                         ...props.currentMessage,
                         user: {
                             ...props.currentMessage.user,
-                            avatar: user?.photo || props.currentMessage.user.avatar
+                            avatar: avatarSource || props.currentMessage.user.avatar
                         }
                     }}
                     imageStyle={{ left: styles.userAvatar, right: styles.userAvatar }}

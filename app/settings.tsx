@@ -63,7 +63,10 @@ export default function SettingsScreen() {
                         style={[styles.setupButton, { backgroundColor: colors.primary }]}
                         onPress={() => router.push({ pathname: '/setup', params: { entryPoint: 'settings' } } as any)}
                     >
-                        <Ionicons name="sparkles" size={24} color="#fff" style={{ marginRight: 10 }} />
+                        <Image
+                            source={SOCIUS_AVATAR_MAP[avatarId] || SOCIUS_AVATAR_MAP['socius-icon']}
+                            style={styles.buttonAvatar}
+                        />
                         <Text style={styles.setupButtonText}>{t('setup.title')}</Text>
                         <Ionicons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 'auto' }} />
                     </TouchableOpacity>
@@ -101,6 +104,8 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* Socius Appearance Section */}
+                {/* Socius Appearance Section - HIDDEN as per request */}
+                {/* 
                 <View style={[styles.section, { backgroundColor: colors.card, shadowColor: isDark ? '#000' : '#000' }]}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.appearance')}</Text>
                     <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('settings.appearance_subtitle')}</Text>
@@ -128,6 +133,7 @@ export default function SettingsScreen() {
                         ))}
                     </ScrollView>
                 </View>
+                */}
 
                 {/* General Settings */}
                 <View style={[styles.section, { backgroundColor: colors.card }]}>
@@ -361,4 +367,13 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
+    buttonAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#fff',
+        marginRight: 12,
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.3)',
+    }
 });
