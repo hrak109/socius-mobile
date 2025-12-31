@@ -45,7 +45,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [text, setText] = useState(initialMessage);
     const [isTyping, setIsTyping] = useState(false);
-    const selectedModel = 'soc-llama3.2:3b';
+    const selectedModel = 'soc-model';
     const { lastNotificationTime, refreshNotifications } = useNotifications();
     const textInputRef = useRef<any>(null);
 
