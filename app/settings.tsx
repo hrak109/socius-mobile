@@ -60,15 +60,15 @@ export default function SettingsScreen() {
                 {/* Setup Wizard Access */}
                 <View style={[styles.section, { backgroundColor: colors.card, marginBottom: 20 }]}>
                     <TouchableOpacity
-                        style={[styles.setupButton, { backgroundColor: colors.primary }]}
+                        style={[styles.setupButton]}
                         onPress={() => router.push({ pathname: '/setup', params: { entryPoint: 'settings' } } as any)}
                     >
                         <Image
                             source={SOCIUS_AVATAR_MAP[avatarId] || SOCIUS_AVATAR_MAP['socius-icon']}
                             style={styles.buttonAvatar}
                         />
-                        <Text style={styles.setupButtonText}>{t('setup.title')}</Text>
-                        <Ionicons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 'auto' }} />
+                        <Text style={[styles.setupButtonText, { color: colors.text }]}>{t('setup.title')}</Text>
+                        <Ionicons name="arrow-forward" size={20} color={colors.textSecondary} style={{ marginLeft: 'auto' }} />
                     </TouchableOpacity>
                 </View>
 
@@ -363,7 +363,6 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     setupButtonText: {
-        color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
     },
@@ -371,9 +370,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#fff',
+        backgroundColor: '#f0f0f0',
         marginRight: 12,
-        borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.3)',
     }
 });

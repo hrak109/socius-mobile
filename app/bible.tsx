@@ -166,6 +166,18 @@ export default function BibleScreen() {
         }
     };
 
+    const handleCopyToNotes = async () => {
+        if (selectedVerse === null || !currentChapter[selectedVerse]) return;
+
+        const context = `${currentBook?.name} ${selectedChapterIndex + 1}:${selectedVerse + 1}\n\n${currentChapter[selectedVerse]}`;
+        await Clipboard.setStringAsync(context);
+
+        setIsActionModalVisible(false);
+        setSelectedVerse(null);
+
+        router.push({ pathname: '/notes' as any, params: { initialContent: context } });
+    };
+
     // Derived State
     const validBookIndex = selectedBookIndex < (currentBible?.books?.length || 0) ? selectedBookIndex : 0;
     const currentBook = currentBible?.books?.[validBookIndex];
@@ -413,6 +425,10 @@ export default function BibleScreen() {
                             <Text style={[styles.actionText, { color: colors.text }]}>
                                 {selectedVerse !== null && highlights.includes(selectedVerse) ? t('bible.unhighlight') : t('bible.highlight')}
                             </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.actionItem} onPress={handleCopyToNotes}>
+                            <Ionicons name="document-text-outline" size={24} color={colors.text} />
+                            <Text style={[styles.actionText, { color: colors.text }]}>{t('bible.copy_notes')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.actionItem} onPress={handleAskSocius}>
                             <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />

@@ -19,6 +19,7 @@ export const translations = {
                 bible: 'Bible',
                 friends: 'Friends',
                 settings: 'Settings',
+                notes: 'Notes',
             },
             weather: {
                 sunny: 'Sunny',
@@ -27,12 +28,13 @@ export const translations = {
             },
         },
         chat: {
-            title: 'Socius Chat',
+            title: 'Socius',
             placeholder: 'Type a message...',
             send: 'Send',
             socius: 'Socius',
             me: 'Me',
             clear_history: 'Clear History',
+            welcome: "Hi I'm Socius",
         },
         settings: {
             title: 'Settings',
@@ -102,6 +104,7 @@ export const translations = {
             no_chapters: 'No chapters available',
             select_book_first: 'Please select a book first',
             copy_success: 'Verse copied to clipboard',
+            copy_notes: 'Copy to Notes',
         },
         avatars: {
             yuki: 'Yuki',
@@ -134,6 +137,16 @@ export const translations = {
             keep_settings: 'Yes, keep it and finish setup',
             change_settings: 'No, I want to change my settings',
         },
+        notes: {
+            title: 'Notes',
+            new_entry: 'New Note',
+            title_placeholder: 'Title (Optional)',
+            content_placeholder: 'Write your note here...',
+            save_entry: 'Save Note',
+            no_entries: 'No notes yet',
+            save: 'Save',
+            cancel: 'Cancel'
+        }
     },
     ko: {
         common: {
@@ -155,6 +168,7 @@ export const translations = {
                 bible: '성경',
                 friends: '친구',
                 settings: '설정',
+                notes: '노트',
             },
             weather: {
                 sunny: '맑음',
@@ -169,6 +183,7 @@ export const translations = {
             socius: '소키어스',
             me: '나',
             clear_history: '대화 기록 삭제',
+            welcome: '안녕 난 소키어스야!',
         },
         settings: {
             title: '설정',
@@ -229,15 +244,16 @@ export const translations = {
             title: '성경',
             select_book: '책 선택',
             loading: '성경 로딩 중...',
-            copy: '말씀 복사',
-            highlight: '형광펜 칠하기',
+            copy: '복사',
+            highlight: '형광펜',
             unhighlight: '형광펜 지우기',
-            ask_socius: '소키어스에게 질문하기',
+            ask_socius: '소키어스 질문',
             books: '책',
             chapters: '장',
             no_chapters: '이용 가능한 장이 없습니다',
             select_book_first: '먼저 책을 선택해주세요',
             copy_success: '말씀이 클립보드에 복사되었습니다',
+            copy_notes: '노트로 카피',
         },
         avatars: {
             yuki: '유키',
@@ -270,6 +286,16 @@ export const translations = {
             keep_settings: '네, 유지하고 완료할래요',
             change_settings: '아니요, 설정을 변경할래요',
         },
+        notes: {
+            title: '노트',
+            new_entry: '새 노트',
+            title_placeholder: '제목 (선택사항)',
+            content_placeholder: '노트를 입력하세요...',
+            save_entry: '저장',
+            no_entries: '노트가 없습니다',
+            save: '저장',
+            cancel: '취소'
+        }
     },
 };
 

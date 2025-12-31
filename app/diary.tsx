@@ -34,6 +34,18 @@ export default function DiaryScreen() {
     const [newTitle, setNewTitle] = useState('');
     const [newContent, setNewContent] = useState('');
 
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+    const toggleExpand = (id: string) => {
+        const newExpanded = new Set(expandedIds);
+        if (newExpanded.has(id)) {
+            newExpanded.delete(id);
+        } else {
+            newExpanded.add(id);
+        }
+        setExpandedIds(newExpanded);
+    };
+
     const fetchEntries = async () => {
         try {
             setIsLoading(true);
@@ -99,25 +111,10 @@ export default function DiaryScreen() {
 
     const renderEntry = ({ item }: { item: DiaryEntry }) => {
         const isEditing = editingId === item.id;
+        const isExpanded = expandedIds.has(item.id);
 
         return (
             <View style={[styles.entryCard, { backgroundColor: colors.card, shadowColor: '#000' }]}>
-                <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
-                    <View style={[styles.dateBadge, { backgroundColor: colors.primary }]}>
-                        <Text style={[styles.dateDay, { color: '#fff' }]}>
-                            {new Date(item.date).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { day: 'numeric' })}
-                        </Text>
-                        <Text style={[styles.dateMonth, { color: 'rgba(255,255,255,0.9)' }]}>
-                            {new Date(item.date).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short' })}
-                        </Text>
-                    </View>
-                    {!isEditing && (
-                        <TouchableOpacity onPress={() => startEditing(item)} style={styles.editIcon}>
-                            <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-
                 {isEditing ? (
                     <View>
                         <TextInput
@@ -149,15 +146,34 @@ export default function DiaryScreen() {
                         </View>
                     </View>
                 ) : (
-                    <View style={styles.entryContentTextContainer}>
-                        {item.title && <Text style={[styles.entryTitle, { color: colors.text }]}>{item.title}</Text>}
-                        <Text style={[styles.entryPreview, { color: colors.textSecondary }]} numberOfLines={item.title ? 2 : 4}>
-                            {item.content}
-                        </Text>
-                        <Text style={[styles.entryTime, { color: colors.textSecondary }]}>
-                            {new Date(item.date).toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', { hour: 'numeric', minute: '2-digit' })}
-                        </Text>
-                    </View>
+                    <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.id)} style={{ flexDirection: 'row' }}>
+                        <View style={[styles.dateBadge, { backgroundColor: colors.primary }]}>
+                            <Text style={[styles.dateDay, { color: '#fff' }]}>
+                                {new Date(item.date).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { day: 'numeric' })}
+                            </Text>
+                            <Text style={[styles.dateMonth, { color: 'rgba(255,255,255,0.9)' }]}>
+                                {new Date(item.date).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short' })}
+                            </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                                {item.title ? (
+                                    <Text style={[styles.entryTitle, { color: colors.text, flex: 1, marginRight: 8 }]} numberOfLines={1}>{item.title}</Text>
+                                ) : (
+                                    <View style={{ flex: 1 }} />
+                                )}
+                                <TouchableOpacity onPress={() => startEditing(item)} style={styles.editIcon}>
+                                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
+                                </TouchableOpacity>
+                            </View>
+                            <Text style={[styles.entryPreview, { color: colors.textSecondary }]} numberOfLines={isExpanded ? undefined : 5}>
+                                {item.content}
+                            </Text>
+                            <Text style={[styles.entryTime, { color: colors.textSecondary }]}>
+                                {new Date(item.date).toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', { hour: 'numeric', minute: '2-digit' })}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
                 )}
             </View>
         );
@@ -418,17 +434,19 @@ const styles = StyleSheet.create({
     dateBadge: {
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 8,
-        borderRadius: 12,
-        minWidth: 50,
-        marginRight: 15,
+        padding: 4,
+        borderRadius: 8,
+        minWidth: 40,
+        marginRight: 12,
+        height: 45,
     },
     dateDay: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
+        lineHeight: 18,
     },
     dateMonth: {
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: '600',
         textTransform: 'uppercase',
     },

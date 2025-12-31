@@ -32,6 +32,7 @@ interface AppIcon {
 const APPS_CONFIG: Omit<AppIcon, 'label'>[] = [
     { id: 'chat', iconName: 'chatbubbles', color: '#1a73e8', route: '/messages', initialX: width * 0.15, initialY: height * 0.25 },
     { id: 'diary', iconName: 'book', color: '#34a853', route: '/diary', initialX: width * 0.65, initialY: height * 0.35 },
+    { id: 'notes', iconName: 'document-text', color: '#8e24aa', route: '/notes', initialX: width * 0.45, initialY: height * 0.35 },
     { id: 'bible', iconName: 'library', color: '#fbbc04', route: '/bible', initialX: width * 0.4, initialY: height * 0.55 },
     { id: 'friends', iconName: 'people', color: '#e91e63', route: '/friends', initialX: width * 0.15, initialY: height * 0.65 },
     { id: 'settings', iconName: 'settings', color: '#607d8b', route: '/settings', initialX: width * 0.75, initialY: height * 0.75 },

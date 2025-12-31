@@ -173,7 +173,8 @@ export default function SetupScreen() {
 
             if (!isExistingUser || !newUsername) {
                 // Format: name + 4 random digits
-                const cleanName = userName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                // Allow unicode characters by only stripping whitespace
+                const cleanName = userName.replace(/\s+/g, '').toLowerCase();
                 const randomSuffix = Math.floor(1000 + Math.random() * 9000);
                 newUsername = `${cleanName}${randomSuffix}`;
             }
@@ -405,12 +406,16 @@ export default function SetupScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => {
+                    if (params.entryPoint === 'settings') {
+                        router.back();
+                        return;
+                    }
                     if (step > 0 && step !== STEPS.RESTORE) goToStep(step - 1); // Can't go back from Restore to login easily without logout, but step - 1 works logic wise
                     else if (step === STEPS.LANGUAGE) router.back(); // Exit setup if at start (though typically this is root)
                     else if (step === STEPS.RESTORE) goToStep(STEPS.LOGIN); // Optional handling
                     else router.back();
                 }}>
-                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                    <Ionicons name={params.entryPoint === 'settings' ? "close" : "arrow-back"} size={24} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{t('setup.title')}</Text>
                 <View style={{ width: 24 }} />
